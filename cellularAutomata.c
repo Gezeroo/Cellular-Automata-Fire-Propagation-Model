@@ -113,14 +113,16 @@ int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Conway's Game of Life - Raylib");
     SetTargetFPS(10); // Adjust speed here
     
-    InitGridRandom();
+    InitGrid();
     bool paused = false;
+    bool HUD = true;
     CellState brush = green;
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_SPACE)) {
+            DrawText("Paused", 10, 10, 20, RED);
             paused = !paused;
             if(paused)
-                SetTargetFPS(60);
+                SetTargetFPS(120);
             else
                 SetTargetFPS(10);
         }
@@ -142,13 +144,39 @@ int main() {
         if (IsKeyPressed(KEY_B)) brush = blue;
         if (IsKeyPressed(KEY_X)) brush = black;
         if (IsKeyPressed(KEY_E)) type = !type;
+        if (IsKeyPressed(KEY_H)) HUD = !HUD;
 
         if (!paused) UpdateGrid();
 
         BeginDrawing();
         ClearBackground(WHITE);
         DrawaGrid();
-        DrawText("SPACE: Start/Pause  R: Reset  E: Change type of rule", 10, 10, 20, RED);
+        if(HUD){
+            DrawText("SPACE: Start/Pause | R: Reset | E: Toggle Rules | H: Hide HUD", 10, 10, 20, RED);
+
+            // Show paused state and brush color
+            if (paused) {
+                DrawText("PAUSED - Drawing Enabled", 10, 40, 20, DARKGRAY);
+
+                // Show current brush color
+                Color brushColor = (brush == green) ? GREEN : (brush == blue) ? BLUE : BLACK;
+                DrawText("Brush:", 10, 70, 20, DARKGRAY);
+                DrawRectangle(80, 70, 24, 24, DARKGRAY);
+                DrawRectangle(82, 72, 20, 20, brushColor);
+                
+
+                DrawText("Use G (Green), B (Blue), X (Black) to change brush", 10, 100, 20, DARKGRAY);
+            } 
+            else
+                DrawText("RUNNING - Drawing Disabled", 10, 40, 20, DARKGRAY);
+
+            if(!type)
+                DrawText("RULE - Game of Life", (SCREEN_WIDTH/2) + 100, 40, 20, DARKGRAY);
+
+            else
+                DrawText("RULE - Random Spread", (SCREEN_WIDTH/2) + 100, 40, 20, DARKGRAY);
+        }
+        
         EndDrawing();
     }
 
