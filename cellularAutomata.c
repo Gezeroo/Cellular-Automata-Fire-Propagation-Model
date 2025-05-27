@@ -12,9 +12,15 @@
 
 
 typedef enum{
-    green,  
+    green, //vegetation 
+    orange, //initial fire
+    red, //stable fire
+    marron, //ember
     blue,   
-    black
+    black,
+    
+    
+    gray
 }CellState;
 
 CellState grid[COLS][ROWS];
