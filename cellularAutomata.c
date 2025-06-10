@@ -3,9 +3,9 @@
 #include <time.h>
 #include <stdio.h>
 
-#define SCREEN_WIDTH 1024
-#define SCREEN_HEIGHT 1024
-#define CELL_SIZE 4
+#define SCREEN_WIDTH 1020
+#define SCREEN_HEIGHT 1020
+#define CELL_SIZE 10
 
 #define COLS (SCREEN_WIDTH / CELL_SIZE)
 #define ROWS (SCREEN_HEIGHT / CELL_SIZE)
@@ -17,8 +17,7 @@ typedef enum{
     stable_fire, 
     ember, 
     water,  
-    ash, 
-    black 
+    ash
 }CellState;
 
 CellState grid[COLS][ROWS];
@@ -26,6 +25,11 @@ CellState buffer[COLS][ROWS];
 int ticks[COLS][ROWS];
 bool paused = true;
 bool HUD = true;
+
+//Parameters
+float initFireParam = 0.3;//0.6;
+float stableFireParam = 0.5;//1.0;
+float emberFireParam = 0.1;//0.2;
 
 void InitGrid(){
     for (int x = 0; x < COLS; x++) {
@@ -38,23 +42,27 @@ void InitGrid(){
 
 void spreadFire(int x, int y){
     int direction[3] = {-1, 0, 1};
-    int dx = rand() % 3;
-    int dy = rand() % 3;
-    int count = 0;
 
-    for (int dx = -1; dx <= 1; dx++) {
-        for (int dy = -1; dy <= 1; dy++) {
-            if (dx == 0 && dy == 0) continue;
+    if(grid[x][y] == vegetation){
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue;
+                int nx = (x + dx);
+                int ny = (y + dy);
+                
+                int rnd = rand()%100;
+                if(nx >= ROWS || nx < 0 || ny >= COLS || ny < 0) continue;
 
-            int nx = (x + dx);
-            int ny = (y + dy);
-            if((nx >= COLS) || (nx <= 0) || (ny >= ROWS) || (ny <= 0)) continue;
-            if (grid[nx][ny] == initial_fire || grid[nx][ny] == stable_fire || grid[nx][ny] == ember)
-                count++;
+                if((grid[nx][ny] == initial_fire) && rnd< (initFireParam * 100))
+                    buffer[x][y] = initial_fire;
+                else if((grid[nx][ny] == stable_fire) && rnd < (stableFireParam * 100))
+                    buffer[x][y] = initial_fire;
+                else if((grid[nx][ny] == ember) && rnd < (stableFireParam * 100))
+                    buffer[x][y] = initial_fire;
+            }
         }
     }
-    if((grid[x][y] == vegetation) && (rand() % 100 < (12.5*count)))
-        buffer[x][y] = initial_fire;
+
     else if(grid[x][y] == initial_fire){
         if(ticks[x][y] > 3){
             ticks[x][y] = 0;
@@ -77,7 +85,7 @@ void spreadFire(int x, int y){
         else ticks[x][y]++;
     }
     else if(grid[x][y] == ash){
-        if(rand() % 100 < (ticks[x][y])/50){
+        if(rand() % 100 < (ticks[x][y])/100){
             ticks[x][y] = 0;
             buffer[x][y] = vegetation;
         }
@@ -112,7 +120,6 @@ void DrawaGrid() {
                 case stable_fire: color = RED; break;
                 case ember: color = MAROON; break;
                 case ash: color = GRAY; break; 
-                case black: color = BLACK; break;
             }
             DrawRectangle(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE, color);
         }
@@ -152,7 +159,6 @@ int main() {
         }
         if (IsKeyPressed(KEY_G)) brush = vegetation;
         if (IsKeyPressed(KEY_B)) brush = water;
-        if (IsKeyPressed(KEY_X)) brush = black;
         if (IsKeyPressed(KEY_O)) brush = initial_fire;
         if (IsKeyPressed(KEY_H)) HUD = !HUD;
 
