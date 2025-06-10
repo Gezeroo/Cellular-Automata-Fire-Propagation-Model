@@ -27,8 +27,8 @@ bool paused = true;
 bool HUD = true;
 
 //Parameters
-float initFireParam = 0.3;//0.6;
-float stableFireParam = 0.5;//1.0;
+float initFireParam = 0.6;//0.6;
+float stableFireParam = 0.1;//1.0;
 float emberFireParam = 0.1;//0.2;
 
 void InitGrid(){
@@ -101,7 +101,6 @@ void UpdateGrid() {
         }
     }
 
-    // Copy buffer to grid
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
             grid[x][y] = buffer[x][y];
