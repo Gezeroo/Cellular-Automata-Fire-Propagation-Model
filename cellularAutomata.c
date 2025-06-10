@@ -5,26 +5,25 @@
 
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 1024
-#define CELL_SIZE 1
+#define CELL_SIZE 4
 
 #define COLS (SCREEN_WIDTH / CELL_SIZE)
 #define ROWS (SCREEN_HEIGHT / CELL_SIZE)
 
 
 typedef enum{
-    vegetation, //vegetation 
-    initial_fire, //initial fire
-    stable_fire, //stable fire
-    ember, //ember
-    water,   //water 
-    ash, //ash
+    vegetation, 
+    initial_fire, 
+    stable_fire, 
+    ember, 
+    water,  
+    ash, 
     black 
 }CellState;
 
 CellState grid[COLS][ROWS];
 CellState buffer[COLS][ROWS];
 int ticks[COLS][ROWS];
-bool type = true;
 bool paused = true;
 bool HUD = true;
 
@@ -36,36 +35,8 @@ void InitGrid(){
         }
     }
 }
-void InitGridRandom() {
-    for (int x = 0; x < COLS; x++) {
-        for (int y = 0; y < ROWS; y++) {
-            int r = rand() % 100;
-            if(r < 5)
-                grid[x][y] = water;
-            else if(r <= 40)
-                grid[x][y] = black;
-            else
-                grid[x][y] = vegetation;
-        }
-    }
-}
 
-int CountNeighbors(int x, int y) {
-    int count = 0;
-    for (int dx = -1; dx <= 1; dx++) {
-        for (int dy = -1; dy <= 1; dy++) {
-            if (dx == 0 && dy == 0) continue;
-
-            int nx = (x + dx + COLS) % COLS;
-            int ny = (y + dy + ROWS) % ROWS;
-            if (grid[nx][ny] == black)
-                count++;
-        }
-    }
-    return count;
-}
-
-void contaminate(int x, int y){
+void spreadFire(int x, int y){
     int direction[3] = {-1, 0, 1};
     int dx = rand() % 3;
     int dy = rand() % 3;
@@ -118,17 +89,7 @@ void contaminate(int x, int y){
 void UpdateGrid() {
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
-            if(!type){
-                int neighbors = CountNeighbors(x, y);
-                CellState current = grid[x][y];
-                if (current == black)
-                    buffer[x][y] = (neighbors == 2 || neighbors == 3) ? black : vegetation;
-                else if (current == vegetation)
-                    buffer[x][y] = (neighbors == 3) ? black : vegetation;
-                else buffer[x][y] = current;    
-            }
-            else
-                contaminate(x,y);
+                spreadFire(x,y);
         }
     }
 
@@ -160,7 +121,7 @@ void DrawaGrid() {
 
 int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Conway's Game of Life - Raylib");
-    SetTargetFPS(60);
+    SetTargetFPS(10);
     for(int i = 0; i < COLS; i++)
         for(int j = 0; j < ROWS; j++)
             ticks[i][j] = 0;
@@ -174,11 +135,10 @@ int main() {
             if(paused)
                 SetTargetFPS(120);
             else
-                SetTargetFPS(60);
+                SetTargetFPS(10);
         }
         if (IsKeyPressed(KEY_R)) {
-            if(type) InitGrid();
-            else InitGridRandom();
+            InitGrid();
         }
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&  paused) {
             Vector2 mouse = GetMousePosition();
@@ -193,7 +153,6 @@ int main() {
         if (IsKeyPressed(KEY_G)) brush = vegetation;
         if (IsKeyPressed(KEY_B)) brush = water;
         if (IsKeyPressed(KEY_X)) brush = black;
-        if (IsKeyPressed(KEY_E)) type = !type;
         if (IsKeyPressed(KEY_O)) brush = initial_fire;
         if (IsKeyPressed(KEY_H)) HUD = !HUD;
 
@@ -203,7 +162,7 @@ int main() {
         ClearBackground(WHITE);
         DrawaGrid();
         if(HUD){
-            DrawText("SPACE: Start/Pause | R: Reset | E: Toggle Rules | H: Hide HUD", 10, 10, 20, RED);
+            DrawText("SPACE: Start/Pause | R: Reset | H: Hide HUD", 10, 10, 20, RED);
 
             // Show paused state and brush color
             if (paused) {
@@ -220,12 +179,6 @@ int main() {
             } 
             else
                 DrawText("RUNNING - Drawing Disabled", 10, 40, 20, DARKGRAY);
-
-            if(!type)
-                DrawText("RULE - Game of Life", (SCREEN_WIDTH/2) + 100, 40, 20, DARKGRAY);
-
-            else
-                DrawText("RULE - Random Spread", (SCREEN_WIDTH/2) + 100, 40, 20, DARKGRAY);
         }
         
         EndDrawing();
