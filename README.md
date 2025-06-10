@@ -1,14 +1,14 @@
 # CellularAutomataC
-Cellular Automata Model in C using Raylib
+A Cellular Automata Model in C language using Raylib for wildfire simulation
 
 # Dependencies 
 * ([Raylib](https://www.raylib.com/))
 
 # Code compilation (WINDOWS):
-gcc cellularAutomata.c -lraylib -lopengl32 -lgdi32 -lwinmm
+`gcc cellularAutomata.c -lraylib -lopengl32 -lgdi32 -lwinmm`
 
 # Code compilation (LINUX)
-./compile.sh
+`./compile.sh`
 
 # Running executable
-./a.exe 
+`./a.exe `
