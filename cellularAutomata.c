@@ -45,12 +45,12 @@ bool HUD = true;
 
 /* ------- Parameters ------- */
 
-float initFireParam = 0.006;
+float initFireParam = 0.6;
 float stableFireParam = 1.0;
 float emberFireParam = 0.2;
 float windIntensity = 1; //delta
 float baseFireIntesity = 1; //beta
-Direction windDirection = NE;
+Direction windDirection = N;
 int calorie = 1;
 
 
@@ -61,7 +61,7 @@ DirectionCoordinate ConvertToCoordinate(){
     if(windDirection == NE) return (DirectionCoordinate) {1,-1};
     if(windDirection == E) return (DirectionCoordinate) {1,0};
     if(windDirection == SE) return (DirectionCoordinate) {1,1};
-    if(windDirection == S) return (DirectionCoordinate) {0,-1};
+    if(windDirection == S) return (DirectionCoordinate) {0,1};
     if(windDirection == SW) return (DirectionCoordinate) {-1,1};
     if(windDirection == W) return (DirectionCoordinate) {-1,0};
     if(windDirection == NW) return (DirectionCoordinate) {-1,-1};
