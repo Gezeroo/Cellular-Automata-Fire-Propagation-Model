@@ -152,10 +152,11 @@ int main() {
     InitGrid();
 
     CellState brush = vegetation;
-    Texture2D arrow = LoadTexture("sprites/windArrowBig.png");
-    Vector2 center = { 65, SCREEN_HEIGHT  - arrow.height / 2.0f };
-    Vector2 origin = { arrow.width / 2.0f, arrow.height / 2.0f };
-    float angle = GetAngleFromDirection(1);
+    Texture2D arrow = LoadTexture("sprites/windArrowBigArrow.png");
+    Texture2D circle = LoadTexture("sprites/windArrowBigBorder.png");
+    Vector2 center = { 64, SCREEN_HEIGHT  - circle.height / 2.0f };
+    Vector2 origin = { circle.width / 2.0f, circle.height / 2.0f };
+    float angle = GetAngleFromDirection(SE);
 
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_SPACE)) {
@@ -183,7 +184,7 @@ int main() {
         if (IsKeyPressed(KEY_B)) brush = water;
         if (IsKeyPressed(KEY_O)) brush = initial_fire;
         if (IsKeyPressed(KEY_H)) HUD = !HUD;
-
+ 
         if (!paused) UpdateGrid();
 
         BeginDrawing();
@@ -211,22 +212,29 @@ int main() {
         
         if(HUD){
             DrawTexturePro(arrow,
-            (Rectangle){ 0, 0, (float)arrow.width, (float)arrow.height },
+            (Rectangle){ 0, 0, (float)arrow.width +1, (float)arrow.height +1 },
             (Rectangle){ center.x, center.y, arrow.width, arrow.height },
             origin,
             angle,
             WHITE);
-        
-        char intensityString[32];
-        sprintf(intensityString, "Wind: %.1f m/s", 0);
-        int textWidth = MeasureText(intensityString, 20);
-        DrawText(intensityString, center.x + 140 - textWidth / 2, center.y, 20, DARKGRAY);
-        }
 
+            DrawTexturePro(circle,
+            (Rectangle){ 0, 0, (float)arrow.width, (float)arrow.height },
+            (Rectangle){ center.x, center.y, arrow.width, arrow.height },
+            origin,
+            0,
+            WHITE);
+        
+            char intensityString[32];
+            sprintf(intensityString, "Wind: %.1f m/s", windIntensity);
+            int textWidth = MeasureText(intensityString, 20);
+            DrawText(intensityString, center.x + 140 - textWidth / 2, center.y, 20, DARKGRAY);
+        }
         
         EndDrawing();
     }
     UnloadTexture(arrow);
+    UnloadTexture(circle);
     CloseWindow();
     return 0;
 }
