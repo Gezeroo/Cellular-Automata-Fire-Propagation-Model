@@ -20,6 +20,17 @@ typedef enum{
     ash
 }CellState;
 
+typedef enum{
+    N,
+    NE,
+    E,
+    SE,
+    S,
+    SW,
+    W,
+    NW
+} direction;
+
 CellState grid[COLS][ROWS];
 CellState buffer[COLS][ROWS];
 int ticks[COLS][ROWS];
@@ -27,9 +38,10 @@ bool paused = true;
 bool HUD = true;
 
 //Parameters
-float initFireParam = 0.6;//0.6;
-float stableFireParam = 0.1;//1.0;
-float emberFireParam = 0.1;//0.2;
+float initFireParam = 0.006;
+float stableFireParam = 1.0;
+float emberFireParam = 0.2;
+float windIntensity = 0.5;
 
 void InitGrid(){
     for (int x = 0; x < COLS; x++) {
@@ -125,15 +137,26 @@ void DrawaGrid() {
     }
 }
 
+float GetAngleFromDirection(int dir) {
+    return dir * 45.0f; // Each step is 45 degrees
+}
+
 int main() {
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Conway's Game of Life - Raylib");
-    SetTargetFPS(10);
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AC - Raylib");
+    SetTargetFPS(120);
+
     for(int i = 0; i < COLS; i++)
         for(int j = 0; j < ROWS; j++)
             ticks[i][j] = 0;
-
+    
     InitGrid();
+
     CellState brush = vegetation;
+    Texture2D arrow = LoadTexture("sprites/windArrowBig.png");
+    Vector2 center = { 65, SCREEN_HEIGHT  - arrow.height / 2.0f };
+    Vector2 origin = { arrow.width / 2.0f, arrow.height / 2.0f };
+    float angle = GetAngleFromDirection(1);
+
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_SPACE)) {
             DrawText("Paused", 10, 10, 20, RED);
@@ -186,9 +209,24 @@ int main() {
                 DrawText("RUNNING - Drawing Disabled", 10, 40, 20, DARKGRAY);
         }
         
+        if(HUD){
+            DrawTexturePro(arrow,
+            (Rectangle){ 0, 0, (float)arrow.width, (float)arrow.height },
+            (Rectangle){ center.x, center.y, arrow.width, arrow.height },
+            origin,
+            angle,
+            WHITE);
+        
+        char intensityString[32];
+        sprintf(intensityString, "Wind: %.1f m/s", 0);
+        int textWidth = MeasureText(intensityString, 20);
+        DrawText(intensityString, center.x + 140 - textWidth / 2, center.y, 20, DARKGRAY);
+        }
+
+        
         EndDrawing();
     }
-
+    UnloadTexture(arrow);
     CloseWindow();
     return 0;
 }
