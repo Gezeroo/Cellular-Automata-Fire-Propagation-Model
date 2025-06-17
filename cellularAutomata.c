@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
+#include <Math.h>
 
 #define SCREEN_WIDTH 1020
 #define SCREEN_HEIGHT 1020
@@ -9,7 +10,6 @@
 
 #define COLS (SCREEN_WIDTH / CELL_SIZE)
 #define ROWS (SCREEN_HEIGHT / CELL_SIZE)
-
 
 typedef enum{
     vegetation, 
@@ -29,19 +29,84 @@ typedef enum{
     SW,
     W,
     NW
-} direction;
+} Direction;
+
+typedef struct {
+    int dx;
+    int dy;
+} DirectionCoordinate;
 
 CellState grid[COLS][ROWS];
 CellState buffer[COLS][ROWS];
 int ticks[COLS][ROWS];
+float combustionMatrix[3][3];
 bool paused = true;
 bool HUD = true;
 
-//Parameters
+/* ------- Parameters ------- */
+
 float initFireParam = 0.006;
 float stableFireParam = 1.0;
 float emberFireParam = 0.2;
-float windIntensity = 0.5;
+float windIntensity = 1; //delta
+float baseFireIntesity = 1; //beta
+Direction windDirection = NE;
+int calorie = 1;
+
+
+
+
+DirectionCoordinate ConvertToCoordinate(){
+    if(windDirection == N) return (DirectionCoordinate) {0,-1};
+    if(windDirection == NE) return (DirectionCoordinate) {1,-1};
+    if(windDirection == E) return (DirectionCoordinate) {1,0};
+    if(windDirection == SE) return (DirectionCoordinate) {1,1};
+    if(windDirection == S) return (DirectionCoordinate) {0,-1};
+    if(windDirection == SW) return (DirectionCoordinate) {-1,1};
+    if(windDirection == W) return (DirectionCoordinate) {-1,0};
+    if(windDirection == NW) return (DirectionCoordinate) {-1,-1};
+}
+
+float compute_direction_factor(int dx, int dy, DirectionCoordinate wind) {
+    // Compute dot product (alignment)
+    float dot = dx * wind.dx + dy * wind.dy;
+
+    // Normalize both vectors (avoid sqrt(0) later)
+    float mag_neighbor = sqrt(dx*dx + dy*dy);
+    float mag_wind = sqrt(wind.dx*wind.dx + wind.dy*wind.dy);
+    
+    if (mag_neighbor == 0 || mag_wind == 0)
+        return 1.0;  // Neutral direction
+
+    // Cosine similarity gives direction alignment [-1, 1]
+    float cos_theta = dot / (mag_neighbor * mag_wind);
+    
+    // Convert to a direction cost r = (1 - cos_theta), scaled to [0,2]
+    // When perfectly aligned with wind: cos_theta = 1 -> r = 0
+    // Opposite to wind: cos_theta = -1 -> r = 2
+    float r = 1.0f - cos_theta;
+    return r;
+}
+
+
+void SetProbabilities(){
+    for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -1; dy <= 1; dy++){
+            if (dx == 0 && dy == 0) {
+                combustionMatrix[dy+1][dx+1] = 0.0f;
+                continue;
+            } 
+            DirectionCoordinate wind = ConvertToCoordinate();
+            float r = compute_direction_factor(dx, dy, wind);
+            float phi = baseFireIntesity - (windIntensity * r);
+
+            if (phi < 0) phi = 0.0f;
+
+            combustionMatrix[dy+1][dx+1] = phi;
+        }
+    }
+}
+
 
 void InitGrid(){
     for (int x = 0; x < COLS; x++) {
@@ -54,7 +119,7 @@ void InitGrid(){
 
 void spreadFire(int x, int y){
     int direction[3] = {-1, 0, 1};
-
+    float localFireParameter;
     if(grid[x][y] == vegetation){
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
@@ -64,12 +129,14 @@ void spreadFire(int x, int y){
                 
                 int rnd = rand()%100;
                 if(nx >= ROWS || nx < 0 || ny >= COLS || ny < 0) continue;
-
-                if((grid[nx][ny] == initial_fire) && rnd< (initFireParam * 100))
+                
+                localFireParameter = 0;
+                
+                if((grid[nx][ny] == initial_fire) && rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie * 100))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == stable_fire) && rnd < (stableFireParam * 100))
+                else if((grid[nx][ny] == stable_fire) && rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie * 100))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == ember) && rnd < (stableFireParam * 100))
+                else if((grid[nx][ny] == ember) && rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie * 100))
                     buffer[x][y] = initial_fire;
             }
         }
@@ -109,7 +176,7 @@ void spreadFire(int x, int y){
 void UpdateGrid() {
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
-                spreadFire(x,y);
+            spreadFire(x,y);
         }
     }
 
@@ -144,7 +211,7 @@ float GetAngleFromDirection(int dir) {
 int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AC - Raylib");
     SetTargetFPS(120);
-
+    SetProbabilities();
     for(int i = 0; i < COLS; i++)
         for(int j = 0; j < ROWS; j++)
             ticks[i][j] = 0;
@@ -156,7 +223,7 @@ int main() {
     Texture2D circle = LoadTexture("sprites/windArrowBigBorder.png");
     Vector2 center = { 64, SCREEN_HEIGHT  - circle.height / 2.0f };
     Vector2 origin = { circle.width / 2.0f, circle.height / 2.0f };
-    float angle = GetAngleFromDirection(SE);
+    float angle = GetAngleFromDirection(windDirection);
 
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_SPACE)) {
