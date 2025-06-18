@@ -40,6 +40,7 @@ CellState grid[COLS][ROWS];
 CellState buffer[COLS][ROWS];
 int ticks[COLS][ROWS];
 float combustionMatrix[3][3];
+float rMatrix[3][3];
 bool paused = true;
 bool HUD = true;
 
@@ -48,65 +49,44 @@ bool HUD = true;
 float initFireParam = 0.6;
 float stableFireParam = 1.0;
 float emberFireParam = 0.2;
-float windIntensity = 1; //delta
-float baseFireIntesity = 1; //beta
-Direction windDirection = N;
+float windIntensity = 0.86; //delta
+float baseFireIntesity = 0.5; //beta
+Direction windDirection = NE;
 int calorie = 1;
 
-
-
-
-DirectionCoordinate ConvertToCoordinate(){
-    if(windDirection == N) return (DirectionCoordinate) {0,-1};
-    if(windDirection == NE) return (DirectionCoordinate) {1,-1};
-    if(windDirection == E) return (DirectionCoordinate) {1,0};
-    if(windDirection == SE) return (DirectionCoordinate) {1,1};
-    if(windDirection == S) return (DirectionCoordinate) {0,1};
-    if(windDirection == SW) return (DirectionCoordinate) {-1,1};
-    if(windDirection == W) return (DirectionCoordinate) {-1,0};
-    if(windDirection == NW) return (DirectionCoordinate) {-1,-1};
+void setWindMatrix(){
+    float arrayOfProbabilities[8];
+    float shift;
+    for(int i = 0; i < 8; i++){
+        shift = ((i + windDirection + 1) % 8);
+        arrayOfProbabilities[i] = fabs((8 - shift*2) / 8);
+        if(arrayOfProbabilities[i] == 0) arrayOfProbabilities[i] = 7/8;
+    }
+     rMatrix[0][0] = arrayOfProbabilities[0];
+     rMatrix[0][1] = arrayOfProbabilities[1];
+     rMatrix[0][2] = arrayOfProbabilities[2];
+     rMatrix[1][2] = arrayOfProbabilities[3];
+     rMatrix[2][2] = arrayOfProbabilities[4];
+     rMatrix[2][1] = arrayOfProbabilities[5];
+     rMatrix[2][0] = arrayOfProbabilities[6];
+     rMatrix[1][0] = arrayOfProbabilities[7];
+     rMatrix[1][1] = 0;
 }
-
-float compute_direction_factor(int dx, int dy, DirectionCoordinate wind) {
-    // Compute dot product (alignment)
-    float dot = dx * wind.dx + dy * wind.dy;
-
-    // Normalize both vectors (avoid sqrt(0) later)
-    float mag_neighbor = sqrt(dx*dx + dy*dy);
-    float mag_wind = sqrt(wind.dx*wind.dx + wind.dy*wind.dy);
-    
-    if (mag_neighbor == 0 || mag_wind == 0)
-        return 1.0;  // Neutral direction
-
-    // Cosine similarity gives direction alignment [-1, 1]
-    float cos_theta = dot / (mag_neighbor * mag_wind);
-    
-    // Convert to a direction cost r = (1 - cos_theta), scaled to [0,2]
-    // When perfectly aligned with wind: cos_theta = 1 -> r = 0
-    // Opposite to wind: cos_theta = -1 -> r = 2
-    float r = 1.0f - cos_theta;
-    return r;
-}
-
 
 void SetProbabilities(){
-    for (int dx = -1; dx <= 1; dx++) {
-        for (int dy = -1; dy <= 1; dy++){
-            if (dx == 0 && dy == 0) {
-                combustionMatrix[dy+1][dx+1] = 0.0f;
+    for (int dx = 0; dx <= 2; dx++) {
+        for (int dy = 0; dy <= 2; dy++){
+            if (dx == 1 && dy == 1) {
+                combustionMatrix[dy][dx] = 0.0f;
                 continue;
             } 
-            DirectionCoordinate wind = ConvertToCoordinate();
-            float r = compute_direction_factor(dx, dy, wind);
-            float phi = baseFireIntesity - (windIntensity * r);
+            float phi = baseFireIntesity -  (windIntensity * rMatrix[dx][dy]);
+            if(phi < 0) phi = 0;
 
-            if (phi < 0) phi = 0.0f;
-
-            combustionMatrix[dy+1][dx+1] = phi;
+            combustionMatrix[dx][dy] = phi;
         }
     }
 }
-
 
 void InitGrid(){
     for (int x = 0; x < COLS; x++) {
@@ -118,8 +98,6 @@ void InitGrid(){
 }
 
 void spreadFire(int x, int y){
-    int direction[3] = {-1, 0, 1};
-    float localFireParameter;
     if(grid[x][y] == vegetation){
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
@@ -130,13 +108,11 @@ void spreadFire(int x, int y){
                 int rnd = rand()%100;
                 if(nx >= ROWS || nx < 0 || ny >= COLS || ny < 0) continue;
                 
-                localFireParameter = 0;
-                
-                if((grid[nx][ny] == initial_fire) && rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie * 100))
+                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie * 100)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == stable_fire) && rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie * 100))
+                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie * 100)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == ember) && rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie * 100))
+                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie * 100)))
                     buffer[x][y] = initial_fire;
             }
         }
@@ -187,7 +163,7 @@ void UpdateGrid() {
     }
 }
 
-void DrawaGrid() {
+void PaintGrid() {
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
             Color color;
@@ -211,6 +187,7 @@ float GetAngleFromDirection(int dir) {
 int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AC - Raylib");
     SetTargetFPS(120);
+    setWindMatrix();
     SetProbabilities();
     for(int i = 0; i < COLS; i++)
         for(int j = 0; j < ROWS; j++)
@@ -256,15 +233,14 @@ int main() {
 
         BeginDrawing();
         ClearBackground(WHITE);
-        DrawaGrid();
+        PaintGrid();
+
         if(HUD){
             DrawText("SPACE: Start/Pause | R: Reset | H: Hide HUD", 10, 10, 20, RED);
 
-            // Show paused state and brush color
             if (paused) {
                 DrawText("PAUSED - Drawing Enabled", 10, 40, 20, DARKGRAY);
 
-                // Show current brush color
                 Color brushColor = (brush == vegetation) ? GREEN : (brush == water) ? BLUE : (brush == initial_fire) ? ORANGE : BLACK;
                 DrawText("Brush:", 10, 70, 20, DARKGRAY);
                 DrawRectangle(80, 70, 24, 24, DARKGRAY);
@@ -275,9 +251,7 @@ int main() {
             } 
             else
                 DrawText("RUNNING - Drawing Disabled", 10, 40, 20, DARKGRAY);
-        }
-        
-        if(HUD){
+
             DrawTexturePro(arrow,
             (Rectangle){ 0, 0, (float)arrow.width +1, (float)arrow.height +1 },
             (Rectangle){ center.x, center.y, arrow.width, arrow.height },
@@ -293,11 +267,10 @@ int main() {
             WHITE);
         
             char intensityString[32];
-            sprintf(intensityString, "Wind: %.1f m/s", windIntensity);
+            sprintf(intensityString, "Wind: %.0f %%", windIntensity*100);
             int textWidth = MeasureText(intensityString, 20);
-            DrawText(intensityString, center.x + 140 - textWidth / 2, center.y, 20, DARKGRAY);
-        }
-        
+            DrawText(intensityString, center.x + 145 - textWidth / 2, center.y, 20, DARKGRAY);
+        }   
         EndDrawing();
     }
     UnloadTexture(arrow);
