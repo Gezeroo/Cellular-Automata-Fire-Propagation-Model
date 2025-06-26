@@ -31,32 +31,28 @@ typedef enum{
     NW
 } Direction;
 
-typedef struct {
-    int dx;
-    int dy;
-} DirectionCoordinate;
-
 CellState grid[COLS][ROWS];
 CellState buffer[COLS][ROWS];
 int ticks[COLS][ROWS];
-float combustionMatrix[3][3];
-float rMatrix[3][3];
+double combustionMatrix[3][3];
+double rMatrix[3][3];
 bool paused = true;
 bool HUD = true;
 
 /* ------- Parameters ------- */
 
-float initFireParam = 0.6;
-float stableFireParam = 1.0;
-float emberFireParam = 0.2;
-float windIntensity = 1; //delta
-float baseFireIntesity = 0.5; //beta
-Direction windDirection = NE;
-int calorie = 1;
+double initFireParam = 0.6;
+double stableFireParam = 1.0;
+double emberFireParam = 0.2;
+double windIntensity = 1; //delta
+double baseFireIntesity = 1; //beta
+Direction windDirection = SW;
+double calorie = 1;
+int alpha = 6;
 
 void setWindMatrix(){
-    float arrayOfProbabilities[8];
-    float shift;
+    double arrayOfProbabilities[8];
+    double shift;
     for(int i = 0; i < 8; i++){
         shift = ((i + windDirection + 1) % 8);
         arrayOfProbabilities[i] = fabs((8 - shift*2) / 8);
@@ -80,7 +76,7 @@ void SetProbabilities(){
                 combustionMatrix[dy][dx] = 0.0f;
                 continue;
             } 
-            float phi = baseFireIntesity -  (windIntensity * rMatrix[dx][dy]);
+            double phi = baseFireIntesity -  (windIntensity * rMatrix[dx][dy]);
             if(phi < 0) phi = 0;
 
             combustionMatrix[dx][dy] = phi;
@@ -91,13 +87,17 @@ void SetProbabilities(){
 void InitGrid(){
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
+            if(x == COLS/2 && y == ROWS/2) grid[x][y] = initial_fire;
+            else{
                 grid[x][y] = vegetation;
                 buffer[x][y] = vegetation;
+            }
         }
     }
 }
 
 void spreadFire(int x, int y){
+    double rnd = (double)rand() / (double)RAND_MAX;
     if(grid[x][y] == vegetation){
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
@@ -105,14 +105,13 @@ void spreadFire(int x, int y){
                 int nx = (x + dx);
                 int ny = (y + dy);
                 
-                int rnd = rand()%100;
                 if(nx >= ROWS || nx < 0 || ny >= COLS || ny < 0) continue;
                 
-                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie * 100)))
+                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie * 100)))
+                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie * 100)))
+                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie)))
                     buffer[x][y] = initial_fire;
             }
         }
@@ -140,7 +139,9 @@ void spreadFire(int x, int y){
         else ticks[x][y]++;
     }
     else if(grid[x][y] == ash){
-        if(rand() % 100 < (ticks[x][y])/100){
+        rnd = (double)rand() / (double)RAND_MAX;
+        if(ticks[x][y] <= 20) ticks[x][y]++;
+        else if(rnd <= (pow(ticks[x][y],2))/pow(10,alpha)){
             ticks[x][y] = 0;
             buffer[x][y] = vegetation;
         }
@@ -201,7 +202,7 @@ int main() {
     Vector2 center = { 64, SCREEN_HEIGHT  - circle.height / 2.0f };
     Vector2 origin = { circle.width / 2.0f, circle.height / 2.0f };
     float angle = GetAngleFromDirection(windDirection);
-
+    int ts = 0;
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_SPACE)) {
             DrawText("Paused", 10, 10, 20, RED);
@@ -212,6 +213,7 @@ int main() {
                 SetTargetFPS(10);
         }
         if (IsKeyPressed(KEY_R)) {
+            ts = 0;
             InitGrid();
         }
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&  paused) {
@@ -229,7 +231,10 @@ int main() {
         if (IsKeyPressed(KEY_O)) brush = initial_fire;
         if (IsKeyPressed(KEY_H)) HUD = !HUD;
  
-        if (!paused) UpdateGrid();
+        if (!paused){
+            UpdateGrid();
+            ts++;
+        } 
 
         BeginDrawing();
         ClearBackground(WHITE);
@@ -270,6 +275,10 @@ int main() {
             sprintf(intensityString, "Wind: %.0f %%", windIntensity*100);
             int textWidth = MeasureText(intensityString, 20);
             DrawText(intensityString, center.x + 145 - textWidth / 2, center.y, 20, DARKGRAY);
+
+            char tsString[16];
+            sprintf(tsString, "%d ts", ts);
+            DrawText(tsString, center.x + 500 / 2, center.y, 20, DARKGRAY);
         }   
         EndDrawing();
     }
