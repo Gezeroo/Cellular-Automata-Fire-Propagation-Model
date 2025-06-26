@@ -44,10 +44,10 @@ bool HUD = true;
 double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
-double windIntensity = 1; //delta
+double windIntensity = 0.8; //delta
 double baseFireIntesity = 1; //beta
-Direction windDirection = SW;
-double calorie = 1;
+Direction windDirection = W;
+double calorie = 0.08;
 int alpha = 6;
 
 void setWindMatrix(){
@@ -91,6 +91,7 @@ void InitGrid(){
             else{
                 grid[x][y] = vegetation;
                 buffer[x][y] = vegetation;
+                ticks[x][y] = 0;
             }
         }
     }
@@ -140,7 +141,7 @@ void spreadFire(int x, int y){
     }
     else if(grid[x][y] == ash){
         rnd = (double)rand() / (double)RAND_MAX;
-        if(ticks[x][y] <= 20) ticks[x][y]++;
+        if(ticks[x][y] <= 100) ticks[x][y]++;
         else if(rnd <= (pow(ticks[x][y],2))/pow(10,alpha)){
             ticks[x][y] = 0;
             buffer[x][y] = vegetation;
@@ -148,6 +149,7 @@ void spreadFire(int x, int y){
         else ticks[x][y]++;
     }
     else if(grid[x][y] == water) buffer[x][y] = grid[x][y];
+    else buffer[x][y] = grid[x][y];
 }
 
 void UpdateGrid() {
@@ -204,6 +206,7 @@ int main() {
     float angle = GetAngleFromDirection(windDirection);
     int ts = 0;
     while (!WindowShouldClose()) {
+        if(ts == 20 || ts == 50 || ts == 100 || ts == 200 || ts == 300) paused = true;
         if (IsKeyPressed(KEY_SPACE)) {
             DrawText("Paused", 10, 10, 20, RED);
             paused = !paused;
