@@ -4,15 +4,17 @@
 #include <stdio.h>
 #include <Math.h>
 
-#define SCREEN_WIDTH 1020
-#define SCREEN_HEIGHT 1020
-#define CELL_SIZE 10
+#define SCREEN_WIDTH 1024
+#define SCREEN_HEIGHT 1024
+#define CELL_SIZE 8
 
 #define COLS (SCREEN_WIDTH / CELL_SIZE)
 #define ROWS (SCREEN_HEIGHT / CELL_SIZE)
 
 typedef enum{
-    vegetation, 
+    vegetation_1,
+    vegetation_2, 
+    vegetation_3,
     initial_fire, 
     stable_fire, 
     ember, 
@@ -31,24 +33,29 @@ typedef enum{
     NW
 } Direction;
 
-CellState grid[COLS][ROWS];
-CellState buffer[COLS][ROWS];
-int ticks[COLS][ROWS];
-double combustionMatrix[3][3];
-double rMatrix[3][3];
-bool paused = true;
-bool HUD = true;
-
 /* ------- Parameters ------- */
 
 double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
-double windIntensity = 0.8; //delta
-double baseFireIntesity = 1; //beta
+double humidity = 0.29; //gamma
+double windIntensity = 1; //delta
+double baseFireIntesity = 0.99; //beta
 Direction windDirection = W;
-double calorie = 0.08;
+double calorie[3] = {0.24,0.16,0.08};
 int alpha = 6;
+
+/* -------------------------- */
+
+CellState grid[COLS][ROWS];
+CellState buffer[COLS][ROWS];
+CellState initialStates[COLS][ROWS];
+int ticks[COLS][ROWS];
+double combustionMatrix[3][3];
+double rMatrix[3][3];
+bool paused = true;
+bool HUD = true;
+bool started = false;
 
 void setWindMatrix(){
     double arrayOfProbabilities[8];
@@ -69,6 +76,18 @@ void setWindMatrix(){
      rMatrix[1][1] = 0;
 }
 
+double CalculateHumidityFactorProbability(){
+    if(humidity > 0 && humidity <= 0.25)
+        return 1.5;
+    else if(humidity > 0.25 && humidity <= 0.5)
+        return 1;
+    else if(humidity > 0.5 && humidity <= 0.75)
+        return 0.8;
+    else if(humidity > 0.75 && humidity <= 1)
+        return 0.6;
+    return 0;
+}
+
 void SetProbabilities(){
     for (int dx = 0; dx <= 2; dx++) {
         for (int dy = 0; dy <= 2; dy++){
@@ -76,7 +95,9 @@ void SetProbabilities(){
                 combustionMatrix[dy][dx] = 0.0f;
                 continue;
             } 
-            double phi = baseFireIntesity -  (windIntensity * rMatrix[dx][dy]);
+            double sigma = CalculateHumidityFactorProbability();
+            double phi = (baseFireIntesity - (windIntensity * rMatrix[dx][dy])) * sigma;
+            if (phi > 1) phi = 1;
             if(phi < 0) phi = 0;
 
             combustionMatrix[dx][dy] = phi;
@@ -87,11 +108,22 @@ void SetProbabilities(){
 void InitGrid(){
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
-            if(x == COLS/2 && y == ROWS/2) grid[x][y] = initial_fire;
+            if(x == COLS/2 && y == ROWS/2) {grid[x][y] = initial_fire; buffer[x][y] = initial_fire;}
             else{
-                grid[x][y] = vegetation;
-                buffer[x][y] = vegetation;
+                grid[x][y] = vegetation_1;
+                buffer[x][y] = vegetation_1;
                 ticks[x][y] = 0;
+            }
+        }
+    }
+}
+
+void SaveInitialPreset(){
+    for (int x = 0; x < COLS; x++) {
+        for (int y = 0; y < ROWS; y++) {
+            if(grid[x][y] == initial_fire) initialStates[x][y] = vegetation_1;
+            else{
+                initialStates[x][y] = grid[x][y];
             }
         }
     }
@@ -99,57 +131,122 @@ void InitGrid(){
 
 void spreadFire(int x, int y){
     double rnd = (double)rand() / (double)RAND_MAX;
-    if(grid[x][y] == vegetation){
-        for (int dx = -1; dx <= 1; dx++) {
+    int maxTicksEmber = 10;
+    int maxTicksInitialFire = 3;
+    int maxTicksStableFire = 3;
+    switch(grid[x][y]){
+        case vegetation_1:
+            for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
                 if (dx == 0 && dy == 0) continue;
                 int nx = (x + dx);
                 int ny = (y + dy);
-                
-                if(nx >= ROWS || nx < 0 || ny >= COLS || ny < 0) continue;
-                
-                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie)))
-                    buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie)))
-                    buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie)))
-                    buffer[x][y] = initial_fire;
-            }
-        }
-    }
 
-    else if(grid[x][y] == initial_fire){
-        if(ticks[x][y] > 3){
-            ticks[x][y] = 0;
-            buffer[x][y] = stable_fire;
-        }
-        else ticks[x][y]++;
+                if(nx <= 0 || nx >= COLS) continue;
+                if(ny <= 0 || ny >= ROWS) continue;
+
+                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[0])))
+                    buffer[x][y] = initial_fire;
+                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[0])))
+                    buffer[x][y] = initial_fire;
+                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie[0])))
+                    buffer[x][y] = initial_fire;
+                }
+            }
+        break;
+        case vegetation_2:
+            for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue;
+                int nx = (x + dx);
+                int ny = (y + dy);
+
+                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[1])))
+                    buffer[x][y] = initial_fire;
+                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[1])))
+                    buffer[x][y] = initial_fire;
+                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie[1])))
+                    buffer[x][y] = initial_fire;
+                }
+            }
+        break;
+        case vegetation_3:
+            for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue;
+                int nx = (x + dx);
+                int ny = (y + dy);
+
+                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[2])))
+                    buffer[x][y] = initial_fire;
+                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[2])))
+                    buffer[x][y] = initial_fire;
+                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie[2])))
+                    buffer[x][y] = initial_fire;
+                }
+            }
+        break;
+        case initial_fire:
+            if(humidity > 0.3){
+                if(ticks[x][y] > 2){
+                    ticks[x][y] = 0;
+                    buffer[x][y] = stable_fire;
+                }
+                else ticks[x][y]++;
+            }
+            else{
+                if(ticks[x][y] > maxTicksInitialFire){
+                    ticks[x][y] = 0;
+                    buffer[x][y] = stable_fire;
+                }
+                else ticks[x][y]++;
+            }
+        break;
+        case stable_fire:
+            if(humidity <= 0.3){
+                if(ticks[x][y] > maxTicksStableFire*5){
+                    ticks[x][y] = 0;
+                    buffer[x][y] = ember;
+                }
+                else ticks[x][y]++;
+            }
+            else{
+                if(ticks[x][y] > 4){
+                    ticks[x][y] = 0;
+                    buffer[x][y] = ember;
+                }
+                else ticks[x][y]++;
+            }
+        break;
+        case ember:
+            if(humidity <= 0.3){
+                if(ticks[x][y] > maxTicksEmber/3){
+                    ticks[x][y] = 0;
+                    buffer[x][y] = ash;
+                }
+                else ticks[x][y]++;
+            }
+            else{
+                if(ticks[x][y] > maxTicksEmber){
+                    ticks[x][y] = 0;
+                    buffer[x][y] = ash;
+                }
+                else ticks[x][y]++;
+            }
+        break;
+        case ash:
+            rnd = (double)rand() / (double)RAND_MAX;
+            if(ticks[x][y] <= 100) ticks[x][y]++;
+            else if(rnd <= (pow(ticks[x][y],2))/pow(10,alpha)){
+                ticks[x][y] = 0;
+                buffer[x][y] = initialStates[x][y];
+            }
+            else ticks[x][y]++;
+        break;
+        case water:
+            buffer[x][y] = grid[x][y]; break;
+        default: buffer[x][y] = grid[x][y];
     }
-    else if(grid[x][y] == stable_fire){
-        if(ticks[x][y] > 5){
-            ticks[x][y] = 0;
-            buffer[x][y] = ember;
-        }
-        else ticks[x][y]++;
-    }
-    else if(grid[x][y] == ember){
-        if(ticks[x][y] > 10){
-            ticks[x][y] = 0;
-            buffer[x][y] = ash;
-        }
-        else ticks[x][y]++;
-    }
-    else if(grid[x][y] == ash){
-        rnd = (double)rand() / (double)RAND_MAX;
-        if(ticks[x][y] <= 100) ticks[x][y]++;
-        else if(rnd <= (pow(ticks[x][y],2))/pow(10,alpha)){
-            ticks[x][y] = 0;
-            buffer[x][y] = vegetation;
-        }
-        else ticks[x][y]++;
-    }
-    else if(grid[x][y] == water) buffer[x][y] = grid[x][y];
-    else buffer[x][y] = grid[x][y];
 }
 
 void UpdateGrid() {
@@ -171,7 +268,9 @@ void PaintGrid() {
         for (int y = 0; y < ROWS; y++) {
             Color color;
             switch (grid[x][y]) {
-                case vegetation: color = GREEN; break;
+                case vegetation_1: color = GREEN; break;
+                case vegetation_2: color = (Color) {66,142,57, 255}; break;
+                case vegetation_3: color = (Color) {58,89,54,255}; break;
                 case water: color = BLUE; break;
                 case initial_fire: color = ORANGE; break;
                 case stable_fire: color = RED; break;
@@ -192,13 +291,10 @@ int main() {
     SetTargetFPS(120);
     setWindMatrix();
     SetProbabilities();
-    for(int i = 0; i < COLS; i++)
-        for(int j = 0; j < ROWS; j++)
-            ticks[i][j] = 0;
     
     InitGrid();
 
-    CellState brush = vegetation;
+    CellState brush = vegetation_1;
     Texture2D arrow = LoadTexture("sprites/windArrowBigArrow.png");
     Texture2D circle = LoadTexture("sprites/windArrowBigBorder.png");
     Vector2 center = { 64, SCREEN_HEIGHT  - circle.height / 2.0f };
@@ -207,29 +303,48 @@ int main() {
     int ts = 0;
     while (!WindowShouldClose()) {
         if(ts == 20 || ts == 50 || ts == 100 || ts == 200 || ts == 300) paused = true;
-        if (IsKeyPressed(KEY_SPACE)) {
-            DrawText("Paused", 10, 10, 20, RED);
-            paused = !paused;
-            if(paused)
-                SetTargetFPS(120);
-            else
+
+        if(IsKeyPressed(KEY_ENTER)){
+            DrawText("Simulation not initiated", 10, 10, 20, RED);
+            if(started){
+                paused = true;
+                ts = 0;
+                InitGrid();
+            }
+            else{
+                SaveInitialPreset();
+                paused = !paused;
+            }
+            started = !started;
+            if(started)
                 SetTargetFPS(10);
+            else SetTargetFPS(120);
         }
+
+        if (IsKeyPressed(KEY_SPACE) && started) {
+            paused = !paused;
+        }
+
         if (IsKeyPressed(KEY_R)) {
             ts = 0;
             InitGrid();
         }
-        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&  paused) {
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&  !started) {
             Vector2 mouse = GetMousePosition();
             int x = mouse.x / CELL_SIZE;
             int y = mouse.y / CELL_SIZE;
 
             if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
-                if (paused) grid[x][y] = brush;
-                buffer[x][y] = brush;
+                if (!started){ grid[x][y] = brush; buffer[x][y] = brush;}
             }
         }
-        if (IsKeyPressed(KEY_G)) brush = vegetation;
+        if (IsKeyPressed(KEY_G)){
+            switch(brush){
+                case vegetation_1: brush = vegetation_2; break;
+                case vegetation_2: brush = vegetation_3; break;
+                default: brush = vegetation_1;
+            }
+        } 
         if (IsKeyPressed(KEY_B)) brush = water;
         if (IsKeyPressed(KEY_O)) brush = initial_fire;
         if (IsKeyPressed(KEY_H)) HUD = !HUD;
@@ -244,21 +359,23 @@ int main() {
         PaintGrid();
 
         if(HUD){
-            DrawText("SPACE: Start/Pause | R: Reset | H: Hide HUD", 10, 10, 20, RED);
+            DrawText("ENTER: Begin/Stop Simulation | SPACE: Start/Pause | R: Reset | H: Hide HUD", 10, 10, 20, RED);
 
-            if (paused) {
-                DrawText("PAUSED - Drawing Enabled", 10, 40, 20, DARKGRAY);
+            if(!started){
+                DrawText("PRESS ENTER TO START SIMULATION - Drawing enabled for initial preset", 10, 40, 20, DARKGRAY);
 
-                Color brushColor = (brush == vegetation) ? GREEN : (brush == water) ? BLUE : (brush == initial_fire) ? ORANGE : BLACK;
+                Color brushColor = (brush == vegetation_1) ? GREEN : (brush == vegetation_2) ? (Color) {66,142,57, 255} : (brush == vegetation_3) ? (Color) {58,89,54,255} : (brush == water) ? BLUE : (brush == initial_fire) ? ORANGE : BLACK;
                 DrawText("Brush:", 10, 70, 20, DARKGRAY);
                 DrawRectangle(80, 70, 24, 24, DARKGRAY);
                 DrawRectangle(82, 72, 20, 20, brushColor);
-                
 
-                DrawText("Use G (Green), B (Blue), O (Orange), X (Black) to change brush", 10, 100, 20, DARKGRAY);
+                DrawText("Use G (Cicle Vegetations), B (Water), O (Initial Fire), X (Black) to change brush", 10, 100, 20, DARKGRAY);
+            }
+            else if (paused) {
+                DrawText("PAUSED - Drawing disabled", 10, 40, 20, DARKGRAY);
             } 
             else
-                DrawText("RUNNING - Drawing Disabled", 10, 40, 20, DARKGRAY);
+                DrawText("RUNNING - Drawing disabled", 10, 40, 20, DARKGRAY);
 
             DrawTexturePro(arrow,
             (Rectangle){ 0, 0, (float)arrow.width +1, (float)arrow.height +1 },
