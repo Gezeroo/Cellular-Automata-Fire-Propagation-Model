@@ -38,12 +38,12 @@ typedef enum{
 double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
-double humidity = 0.29; //gamma
+double humidity = 1; //gamma
 double windIntensity = 1; //delta
 double baseFireIntesity = 0.99; //beta
 Direction windDirection = W;
 double calorie[3] = {0.24,0.16,0.08};
-int alpha = 6;
+int alpha = 8;
 
 /* -------------------------- */
 
@@ -394,11 +394,18 @@ int main() {
             char intensityString[32];
             sprintf(intensityString, "Wind: %.0f %%", windIntensity*100);
             int textWidth = MeasureText(intensityString, 20);
-            DrawText(intensityString, center.x + 145 - textWidth / 2, center.y, 20, DARKGRAY);
+            DrawText(intensityString, center.x + 145 - textWidth / 2, center.y - 10, 20, DARKGRAY);
+
+            char humString[20];
+            sprintf(humString, "Humidity: %.0f %%", humidity*100);
+            textWidth = MeasureText(intensityString, 20);
+            DrawText(humString, center.x + 145 - textWidth / 2, center.y + 10, 20, DARKGRAY);
 
             char tsString[16];
             sprintf(tsString, "%d ts", ts);
-            DrawText(tsString, center.x + 500 / 2, center.y, 20, DARKGRAY);
+            DrawText(tsString, SCREEN_WIDTH - center.x - 30, center.y, 20, DARKGRAY);
+
+
         }   
         EndDrawing();
     }
