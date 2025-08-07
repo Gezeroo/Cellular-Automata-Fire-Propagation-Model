@@ -4,12 +4,9 @@
 #include <stdio.h>
 #include <Math.h>
 
-#define SCREEN_WIDTH 1024
-#define SCREEN_HEIGHT 1024
-#define CELL_SIZE 8
 
-#define COLS (SCREEN_WIDTH / CELL_SIZE)
-#define ROWS (SCREEN_HEIGHT / CELL_SIZE)
+#define COLS 128
+#define ROWS 128
 
 typedef enum{
     vegetation_1,
@@ -38,12 +35,12 @@ typedef enum{
 double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
-double humidity = 1; //gamma
-double windIntensity = 1; //delta
-double baseFireIntesity = 0.99; //beta
+double humidity = 0.2; //gamma
+double windIntensity = 0; //delta
+double baseFireIntesity = 0.5; //beta
 Direction windDirection = W;
 double calorie[3] = {0.24,0.16,0.08};
-int alpha = 8;
+int alpha = 6;
 
 /* -------------------------- */
 
@@ -105,13 +102,25 @@ void SetProbabilities(){
     }
 }
 
-void InitGrid(){
+void InitGrid(int type){
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
             if(x == COLS/2 && y == ROWS/2) {grid[x][y] = initial_fire; buffer[x][y] = initial_fire;}
             else{
-                grid[x][y] = vegetation_1;
-                buffer[x][y] = vegetation_1;
+                if(type == 0){
+                    grid[x][y] = vegetation_1;
+                    buffer[x][y] = vegetation_1;
+                }
+                else if(type == 1){
+                    grid[x][y] = vegetation_2;
+                    buffer[x][y] = vegetation_2;
+                }
+                    
+                else if(type == 2){
+                    grid[x][y] = vegetation_3;
+                    buffer[x][y] = vegetation_3;
+                }
+                    
                 ticks[x][y] = 0;
             }
         }
@@ -262,30 +271,7 @@ void UpdateGrid() {
     }
 }
 
-void PaintGrid() {
-    for (int x = 0; x < COLS; x++) {
-        for (int y = 0; y < ROWS; y++) {
-            Color color;
-            switch (grid[x][y]) {
-                case vegetation_1: color = GREEN; break;
-                case vegetation_2: color = (Color) {66,142,57, 255}; break;
-                case vegetation_3: color = (Color) {58,89,54,255}; break;
-                case water: color = BLUE; break;
-                case initial_fire: color = ORANGE; break;
-                case stable_fire: color = RED; break;
-                case ember: color = MAROON; break;
-                case ash: color = GRAY; break; 
-            }
-            DrawRectangle(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE, color);
-        }
-    }
-}
-
-float GetAngleFromDirection(int dir) {
-    return dir * 45.0f; // Each step is 45 degrees
-}
-
-int countBurnedCells(){
+double countBurnedCells(){
     int count = 0;
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
@@ -294,165 +280,74 @@ int countBurnedCells(){
             }
         }
     }
-    return count;
-}
-
-float mean(int burnedCells[100]){
-    int sum = 0;
-    for(int i = 0; i < 100; i++){
-        sum += burnedCells[i];
-    }
-    return (float)sum/100;
+    return (double)count;
 }
 
 int main() {
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AC - Raylib");
-    SetTargetFPS(120);
     setWindMatrix();
     SetProbabilities();
-    int burnedCells[100];
     int test = 0;
+    double sumExperiment1[500] = {0};
+    double sumExperiment2[500] = {0};
+    double sumExperiment3[500] = {0};
+    double experimentMean[500];
+    double experimentMean1[500];
+    double experimentMean2[500];
+    double experimentMean3[500];
 
-    float experiments[80];
-    int experiment = 0;
-    
-    InitGrid();
-
-    CellState brush = vegetation_1;
-    Texture2D arrow = LoadTexture("sprites/windArrowBigArrow.png");
-    Texture2D circle = LoadTexture("sprites/windArrowBigBorder.png");
-    Vector2 center = { 64, SCREEN_HEIGHT  - circle.height / 2.0f };
-    Vector2 origin = { circle.width / 2.0f, circle.height / 2.0f };
-    float angle = GetAngleFromDirection(windDirection);
-    int ts = 0;
-    while (!WindowShouldClose()) {
-        //if(ts == 20 || ts == 50 || ts == 100 || ts == 200 || ts == 300) paused = true;
-        if(ts == 300){
-            paused = true;
-            burnedCells[test] = countBurnedCells();
-            ts = 0;
-            InitGrid();
-            test++;
-            if(test > 100){
-                experiments[experiment] = mean(burnedCells);
-                test = 0;
-                experiment++;
-            }
-            paused = false;
-            if(experiment > 80){
-                for(int i = 0; i < 80; i++){
-                    printf("%f" , experiments[i]);
-                }
-                paused = true;
-            }
-        }
-        if(IsKeyPressed(KEY_ENTER)){
-            DrawText("Simulation not initiated", 10, 10, 20, RED);
-            if(started){
-                paused = true;
-                ts = 0;
-                InitGrid();
-            }
-            else{
-                SaveInitialPreset();
-                paused = !paused;
-            }
-            started = !started;
-            if(started)
-                SetTargetFPS(10);
-            else SetTargetFPS(120);
-        }
-
-        if (IsKeyPressed(KEY_SPACE) && started) {
-            paused = !paused;
-        }
-
-        if (IsKeyPressed(KEY_R)) {
-            ts = 0;
-            InitGrid();
-        }
-        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&  !started) {
-            Vector2 mouse = GetMousePosition();
-            int x = mouse.x / CELL_SIZE;
-            int y = mouse.y / CELL_SIZE;
-
-            if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
-                if (!started){ grid[x][y] = brush; buffer[x][y] = brush;}
-            }
-        }
-        if (IsKeyPressed(KEY_G)){
-            switch(brush){
-                case vegetation_1: brush = vegetation_2; break;
-                case vegetation_2: brush = vegetation_3; break;
-                default: brush = vegetation_1;
-            }
-        } 
-        if (IsKeyPressed(KEY_B)) brush = water;
-        if (IsKeyPressed(KEY_O)) brush = initial_fire;
-        if (IsKeyPressed(KEY_H)) HUD = !HUD;
- 
-        if (!paused){
+    InitGrid(0);
+    clock_t start = clock();
+    for(int test = 0; test < 100; test++){
+        InitGrid(0);
+        for(int ts = 0; ts < 500; ts++){
             UpdateGrid();
-            ts++;
-        } 
-
-        BeginDrawing();
-        ClearBackground(WHITE);
-        PaintGrid();
-
-        if(HUD){
-            DrawText("ENTER: Begin/Stop Simulation | SPACE: Start/Pause | R: Reset | H: Hide HUD", 10, 10, 20, RED);
-
-            if(!started){
-                DrawText("PRESS ENTER TO START SIMULATION - Drawing enabled for initial preset", 10, 40, 20, DARKGRAY);
-
-                Color brushColor = (brush == vegetation_1) ? GREEN : (brush == vegetation_2) ? (Color) {66,142,57, 255} : (brush == vegetation_3) ? (Color) {58,89,54,255} : (brush == water) ? BLUE : (brush == initial_fire) ? ORANGE : BLACK;
-                DrawText("Brush:", 10, 70, 20, DARKGRAY);
-                DrawRectangle(80, 70, 24, 24, DARKGRAY);
-                DrawRectangle(82, 72, 20, 20, brushColor);
-
-                DrawText("Use G (Cicle Vegetations), B (Water), O (Initial Fire), X (Black) to change brush", 10, 100, 20, DARKGRAY);
-            }
-            else if (paused) {
-                DrawText("PAUSED - Drawing disabled", 10, 40, 20, DARKGRAY);
-            } 
-            else
-                DrawText("RUNNING - Drawing disabled", 10, 40, 20, DARKGRAY);
-
-            DrawTexturePro(arrow,
-            (Rectangle){ 0, 0, (float)arrow.width +1, (float)arrow.height +1 },
-            (Rectangle){ center.x, center.y, arrow.width, arrow.height },
-            origin,
-            angle,
-            WHITE);
-
-            DrawTexturePro(circle,
-            (Rectangle){ 0, 0, (float)arrow.width, (float)arrow.height },
-            (Rectangle){ center.x, center.y, arrow.width, arrow.height },
-            origin,
-            0,
-            WHITE);
-        
-            char intensityString[32];
-            sprintf(intensityString, "Wind: %.0f %%", windIntensity*100);
-            int textWidth = MeasureText(intensityString, 20);
-            DrawText(intensityString, center.x + 145 - textWidth / 2, center.y - 10, 20, DARKGRAY);
-
-            char humString[20];
-            sprintf(humString, "Humidity: %.0f %%", humidity*100);
-            textWidth = MeasureText(intensityString, 20);
-            DrawText(humString, center.x + 145 - textWidth / 2, center.y + 10, 20, DARKGRAY);
-
-            char tsString[16];
-            sprintf(tsString, "%d ts", ts);
-            DrawText(tsString, SCREEN_WIDTH - center.x - 30, center.y, 20, DARKGRAY);
-
-
-        }   
-        EndDrawing();
+            sumExperiment1[ts] += countBurnedCells();
+        }
     }
-    UnloadTexture(arrow);
-    UnloadTexture(circle);
-    CloseWindow();
+
+    for(int test = 0; test < 100; test++){
+        InitGrid(1);
+        for(int ts = 0; ts < 500; ts++){
+            UpdateGrid();
+            sumExperiment2[ts] += countBurnedCells();
+        }
+    }
+
+    for(int test = 0; test < 100; test++){
+        InitGrid(2);
+        for(int ts = 0; ts < 500; ts++){
+            UpdateGrid();
+            sumExperiment3[ts] += countBurnedCells();
+        }
+    }
+    clock_t end = clock();
+
+    for(int i = 0; i < 500; i++){
+        double mean = sumExperiment1[i]/100;
+        double mean2 = sumExperiment2[i]/100;
+        double mean3 = sumExperiment3[i]/100;
+
+        experimentMean1[i] = mean/(COLS*ROWS);
+        experimentMean2[i] = mean2/(COLS*ROWS);
+        experimentMean3[i] = mean3/(COLS*ROWS);
+    }
+
+
+    FILE *file = fopen("output.csv", "w");
+    if (file == NULL) {
+        perror("Error opening file");
+        return 1;
+    }
+
+    fprintf(file, "index,veg1,veg2,veg3\n");
+
+    for (int i = 0; i < 500; i++) {
+        fprintf(file, "%d,%f,%f,%f\n", i, experimentMean1[i], experimentMean2[i], experimentMean3[i]);
+    }
+
+    fclose(file);
+
+    float seconds = (float)(end - start) / CLOCKS_PER_SEC;
+    printf("Tempo: %f\n", seconds);
     return 0;
 }
