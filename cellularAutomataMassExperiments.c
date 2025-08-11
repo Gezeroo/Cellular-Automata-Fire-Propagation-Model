@@ -35,12 +35,15 @@ typedef enum{
 double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
+
 double humidity = 0.2; //gamma
+
 double windIntensity = 0; //delta
-double baseFireIntesity = 0.5; //beta
-Direction windDirection = W;
+double baseFireIntesity = 0.38; //beta
+Direction windDirection = SE;
+
 double calorie[3] = {0.24,0.16,0.08};
-int alpha = 6;
+int alpha = 8;
 
 /* -------------------------- */
 
@@ -139,6 +142,7 @@ void SaveInitialPreset(){
 }
 
 void spreadFire(int x, int y){
+    int idleTime = 100;
     double rnd = (double)rand() / (double)RAND_MAX;
     int maxTicksEmber = 10;
     int maxTicksInitialFire = 3;
@@ -151,8 +155,8 @@ void spreadFire(int x, int y){
                 int nx = (x + dx);
                 int ny = (y + dy);
 
-                if(nx <= 0 || nx >= COLS) continue;
-                if(ny <= 0 || ny >= ROWS) continue;
+                if(nx < 0 || nx >= COLS) continue;
+                if(ny < 0 || ny >= ROWS) continue;
 
                 if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[0])))
                     buffer[x][y] = initial_fire;
@@ -170,6 +174,9 @@ void spreadFire(int x, int y){
                 int nx = (x + dx);
                 int ny = (y + dy);
 
+                if(nx < 0 || nx >= COLS) continue;
+                if(ny < 0 || ny >= ROWS) continue;
+
                 if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[1])))
                     buffer[x][y] = initial_fire;
                 else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[1])))
@@ -185,6 +192,9 @@ void spreadFire(int x, int y){
                 if (dx == 0 && dy == 0) continue;
                 int nx = (x + dx);
                 int ny = (y + dy);
+
+                if(nx < 0 || nx >= COLS) continue;
+                if(ny < 0 || ny >= ROWS) continue;
 
                 if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[2])))
                     buffer[x][y] = initial_fire;
@@ -245,9 +255,9 @@ void spreadFire(int x, int y){
         break;
         case ash:
             rnd = (double)rand() / (double)RAND_MAX;
-            if(rnd <= (pow(ticks[x][y],2))/pow(10,alpha) && (ticks[x][y] >= 100)){
+            if(rnd <= (pow(ticks[x][y]-idleTime,2))/pow(10,alpha) && (ticks[x][y] >= idleTime)){
                 ticks[x][y] = 0;
-                buffer[x][y] = initialStates[x][y];
+                //buffer[x][y] = initialStates[x][y];
             }
             ticks[x][y]++;
         break;
@@ -287,6 +297,8 @@ int main() {
     setWindMatrix();
     SetProbabilities();
     int test = 0;
+    double actualBurtCellQtd = 0;
+    double lastBurtCellQtd = 0;
     double sumExperiment1[500] = {0};
     double sumExperiment2[500] = {0};
     double sumExperiment3[500] = {0};
