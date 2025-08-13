@@ -38,10 +38,12 @@ double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
 
-double humidity = 0.8; //gamma
+double humidity = 0; //gamma
 double windIntensity = 0.8; //delta
-double baseFireIntesity = 0.9; //beta
+double baseFireIntesity = 0.55; //beta
 Direction windDirection = W;
+
+double slopeCoeficient = 0.8; //alfa
 
 double calorie[3] = {0.24,0.16,0.08};
 int alpha = 6;
@@ -52,6 +54,7 @@ CellState grid[COLS][ROWS];
 CellState buffer[COLS][ROWS];
 CellState initialStates[COLS][ROWS];
 int ticks[COLS][ROWS];
+int altitudes[COLS][ROWS];
 double combustionMatrix[3][3];
 double rMatrix[3][3];
 bool paused = true;
@@ -107,22 +110,120 @@ void SetProbabilities(){
 }
 
 void InitGrid(int type){
+    int frac = COLS/16;
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
-            if(x == COLS/2 && y == ROWS/2) {grid[x][y] = initial_fire; buffer[x][y] = initial_fire;}
+            int zone = x/frac;
+            if(x == COLS/2 && y == ROWS/2) {grid[x][y] = initial_fire; buffer[x][y] = initial_fire; altitudes[x][y] = (type > 5) ? 800 : 100; continue;}
             else{
-                if(type == 0){
-                    grid[x][y] = vegetation_1;
-                    buffer[x][y] = vegetation_1;
-                }
-                else if(type == 1){
-                    grid[x][y] = vegetation_2;
-                    buffer[x][y] = vegetation_2;
-                }
-                    
-                else if(type == 2){
-                    grid[x][y] = vegetation_3;
-                    buffer[x][y] = vegetation_3;
+                switch(type){
+                    case 0:
+                        grid[x][y] = vegetation_1;
+                        buffer[x][y] = vegetation_1;
+                        altitudes[x][y]=100;
+                        break;
+                    case 1:
+                        grid[x][y] = vegetation_2;
+                        buffer[x][y] = vegetation_2;
+                        altitudes[x][y]=100;
+                        break;
+                    case 2:
+                        grid[x][y] = vegetation_3;
+                        buffer[x][y] = vegetation_3;
+                        altitudes[x][y]=100;
+                        break;
+                    case 3:
+                        if(x > COLS/2){
+                            grid[x][y] = vegetation_1;
+                            buffer[x][y] = vegetation_1;
+                        }
+                        else{
+                            grid[x][y] = vegetation_2;
+                            buffer[x][y] = vegetation_2;
+                        }
+                        altitudes[x][y]=100;
+                        break;
+                    case 4:
+                        if(x > COLS/2){
+                            grid[x][y] = vegetation_1;
+                            buffer[x][y] = vegetation_1;
+                        }
+                        else{
+                            grid[x][y] = vegetation_3;
+                            buffer[x][y] = vegetation_3;
+                        }
+                        altitudes[x][y]=100;
+                        break;
+                    case 5:
+                        if(x > COLS/2){
+                            grid[x][y] = vegetation_2;
+                            buffer[x][y] = vegetation_2;
+                        }
+                        else{
+                            grid[x][y] = vegetation_3;
+                            buffer[x][y] = vegetation_3;
+                        }
+                        altitudes[x][y]=100;
+                        break;
+                    case 6:
+                        grid[x][y] = vegetation_1;
+                        buffer[x][y] = vegetation_1;
+                        if (zone >= 0 && zone < 16) {
+                            altitudes[x][y] = (zone + 1) * 100;
+                        }
+                        break;
+                    case 7:
+                        grid[x][y] = vegetation_2;
+                        buffer[x][y] = vegetation_2;
+                        if (zone >= 0 && zone < 16) {
+                            altitudes[x][y] = (zone + 1) * 100;
+                        }
+                    case 8:
+                        grid[x][y] = vegetation_3;
+                        buffer[x][y] = vegetation_3;
+                        if (zone >= 0 && zone < 16) {
+                            altitudes[x][y] = (zone + 1) * 100;
+                        }
+                        break;
+                    case 9:
+                        if(x > COLS/2){
+                            grid[x][y] = vegetation_1;
+                            buffer[x][y] = vegetation_1;
+                        }
+                        else{
+                            grid[x][y] = vegetation_2;
+                            buffer[x][y] = vegetation_2;
+                        }
+                        if (zone >= 0 && zone < 16) {
+                            altitudes[x][y] = (zone + 1) * 100;
+                        }
+                        break;
+                    case 10:
+                        if(x > COLS/2){
+                            grid[x][y] = vegetation_1;
+                            buffer[x][y] = vegetation_1;
+                        }
+                        else{
+                            grid[x][y] = vegetation_3;
+                            buffer[x][y] = vegetation_3;
+                        }
+                        if (zone >= 0 && zone < 16) {
+                            altitudes[x][y] = (zone + 1) * 100;
+                        }
+                        break;
+                    case 11:
+                        if(x > COLS/2){
+                            grid[x][y] = vegetation_2;
+                            buffer[x][y] = vegetation_2;
+                        }
+                        else{
+                            grid[x][y] = vegetation_3;
+                            buffer[x][y] = vegetation_3;
+                        }
+                        if (zone >= 0 && zone < 16) {
+                            altitudes[x][y] = (zone + 1) * 100;
+                        }
+                        break;
                 }
                     
                 ticks[x][y] = 0;
@@ -144,6 +245,7 @@ void SaveInitialPreset(){
 
 void spreadFire(int x, int y){
     double rnd = (double)rand() / (double)RAND_MAX;
+    double elevation;
     int maxTicksEmber = 10;
     int maxTicksInitialFire = 3;
     int maxTicksStableFire = 3;
@@ -158,11 +260,14 @@ void spreadFire(int x, int y){
                 if(nx < 0 || nx >= COLS) continue;
                 if(ny < 0 || ny >= ROWS) continue;
 
-                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[0])))
+                if((dx == dy)) elevation = exp(slopeCoeficient * atan((altitudes[x][y] - altitudes[nx][ny])/sqrt(2)));
+                else elevation = exp(slopeCoeficient * atan((altitudes[x][y] - altitudes[nx][ny])/1));
+
+                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[0] * elevation)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[0])))
+                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[0] * elevation)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie[0])))
+                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie[0] * elevation)))
                     buffer[x][y] = initial_fire;
                 }
             }
@@ -177,11 +282,14 @@ void spreadFire(int x, int y){
                 if(nx < 0 || nx >= COLS) continue;
                 if(ny < 0 || ny >= ROWS) continue;
 
-                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[1])))
+                if((dx == dy)) elevation = exp(slopeCoeficient * atan((altitudes[x][y] - altitudes[nx][ny])/sqrt(2)));
+                else elevation = exp(slopeCoeficient * atan((altitudes[x][y] - altitudes[nx][ny])/1));
+
+                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[1] * elevation)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[1])))
+                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[1] * elevation)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie[1])))
+                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie[1] * elevation)))
                     buffer[x][y] = initial_fire;
                 }
             }
@@ -196,11 +304,14 @@ void spreadFire(int x, int y){
                 if(nx < 0 || nx >= COLS) continue;
                 if(ny < 0 || ny >= ROWS) continue;
 
-                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[2])))
+                if((dx == dy)) elevation = exp(slopeCoeficient * atan((altitudes[x][y] - altitudes[nx][ny])/sqrt(2)));
+                else elevation = exp(slopeCoeficient * atan((altitudes[x][y] - altitudes[nx][ny])/1));
+
+                if((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * initFireParam * calorie[2] * elevation)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[2])))
+                else if((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx+1][dy+1] * stableFireParam * calorie[2] * elevation)))
                     buffer[x][y] = initial_fire;
-                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie[2])))
+                else if((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx+1][dy+1] * emberFireParam * calorie[2] * elevation)))
                     buffer[x][y] = initial_fire;
                 }
             }
@@ -281,21 +392,99 @@ void UpdateGrid() {
     }
 }
 
+Color AdjustBrightness(Color base, float factor) {
+    int r = (int)(base.r * factor);
+    int g = (int)(base.g * factor);
+    int b = (int)(base.b * factor);
+
+    if (r > 255) r = 255; if (r < 0) r = 0;
+    if (g > 255) g = 255; if (g < 0) g = 0;
+    if (b > 255) b = 255; if (b < 0) b = 0;
+
+    return (Color){r, g, b, base.a};
+}
+
 void PaintGrid() {
+    int minAlt = altitudes[0][0];
+    int maxAlt = altitudes[0][0];
     for (int x = 0; x < COLS; x++) {
         for (int y = 0; y < ROWS; y++) {
+            if (altitudes[x][y] < minAlt) minAlt = altitudes[x][y];
+            if (altitudes[x][y] > maxAlt) maxAlt = altitudes[x][y];
+        }
+    }
+
+    for (int x = 0; x < COLS; x++) {
+        float brightnessLevels[5] = {0.75f, 0.85f, 1.0f, 1.1f, 1.2f};
+        for (int y = 0; y < ROWS; y++) {
+            float norm = 1;
+            if (maxAlt != minAlt) {
+                norm = (float)(altitudes[x][y] - minAlt) / (maxAlt - minAlt);
+            }
+
+            int level = (int)(norm * 4 + 0.5f);
+            if (level < 0) level = 0;
+            if (level > 4) level = 4;
+            float brightnessFactor = brightnessLevels[level];
+
             Color color;
             switch (grid[x][y]) {
-                case vegetation_1: color = GREEN; break;
-                case vegetation_2: color = (Color) {66,142,57, 255}; break;
-                case vegetation_3: color = (Color) {58,89,54,255}; break;
+                case vegetation_1: color = (Color) {156,203,102,255}; break;
+                case vegetation_2: color = (Color) {124,177,66,255}; break;
+                case vegetation_3: color = (Color) {50,99,30,255}; break;
                 case water: color = BLUE; break;
                 case initial_fire: color = ORANGE; break;
                 case stable_fire: color = RED; break;
                 case ember: color = MAROON; break;
                 case ash: color = GRAY; break; 
             }
+
+            color =AdjustBrightness(color,brightnessFactor);
             DrawRectangle(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE, color);
+
+            int px = x * CELL_SIZE;
+            int py = y * CELL_SIZE;
+
+            Vector2 center = { px + CELL_SIZE / 2.0f, py + CELL_SIZE / 2.0f };
+            float offset = CELL_SIZE / 2.0f;
+
+            int currentAltitude = altitudes[x][y];
+
+            int dx[4] = { 0,  0, -1, 1 };
+            int dy[4] = { -1, 1,  0, 0 };
+
+            for (int i = 0; i < 4; i++) {
+                int nx = x + dx[i];
+                int ny = y + dy[i];
+
+                if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+                    int neighborAltitude = altitudes[nx][ny];
+
+                    if (currentAltitude > neighborAltitude) {
+                        Vector2 start = {0}, end = {0};
+
+                        
+                        if (dx[i] == 0 && dy[i] == -1) {
+                            start = (Vector2){ px, py };
+                            end   = (Vector2){ px + CELL_SIZE, py };
+                        }
+                        else if (dx[i] == 0 && dy[i] == 1) {
+                            start = (Vector2){ px, py + CELL_SIZE - 1 };
+                            end   = (Vector2){ px + CELL_SIZE, py + CELL_SIZE - 1 };
+                        }
+                        else if (dx[i] == -1 && dy[i] == 0) {
+                            start = (Vector2){ px, py };
+                            end   = (Vector2){ px, py + CELL_SIZE };
+                        }
+                        else if (dx[i] == 1 && dy[i] == 0) {
+                            start = (Vector2){ px + CELL_SIZE - 1, py };
+                            end   = (Vector2){ px + CELL_SIZE - 1, py + CELL_SIZE };
+                        }
+
+                        DrawLineEx(start, end, 1.5f, BLACK);
+                    }  
+                }
+            }
         }
     }
 }
@@ -323,6 +512,7 @@ int main() {
     float angle = GetAngleFromDirection(windDirection);
 
     int ts = 0;
+    int altitude = 100;
     while (!WindowShouldClose()) {
         //if(ts == 20 || ts == 50 || ts == 100 || ts == 200 || ts == 300) paused = true;
         if(IsKeyPressed(KEY_ENTER)){
@@ -350,6 +540,13 @@ int main() {
             ts = 0;
             InitGrid(gridType);
         }
+
+        if (IsKeyPressed(KEY_UP)) {
+            altitude++;
+        }
+        if (IsKeyPressed(KEY_DOWN)) {
+            altitude--;
+        }
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&  !started) {
             Vector2 mouse = GetMousePosition();
             int x = mouse.x / CELL_SIZE;
@@ -357,16 +554,22 @@ int main() {
 
             if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
                 if (!started){ grid[x][y] = brush; buffer[x][y] = brush;}
+                altitudes[x][y] = altitude;
             }
         }
         if (IsKeyPressed(KEY_G)){
             switch(brush){
-                case vegetation_1: brush = vegetation_2; gridType = 1; break;
-                case vegetation_2: brush = vegetation_3; gridType = 2; break;
-                default: brush = vegetation_1; gridType = 0;
+                case vegetation_1: brush = vegetation_2; break;
+                case vegetation_2: brush = vegetation_3; break;
+                default: brush = vegetation_1;
             }
-            if(!started) InitGrid(gridType);
         } 
+        if (IsKeyPressed(KEY_F)){
+            gridType++;
+            if(gridType > 11)
+                gridType = 0;
+            if(!started) InitGrid(gridType);
+        }
         if (IsKeyPressed(KEY_B)) brush = water;
         if (IsKeyPressed(KEY_O)) brush = initial_fire;
         if (IsKeyPressed(KEY_H)) HUD = !HUD;
@@ -422,11 +625,11 @@ int main() {
             sprintf(humString, "Humidity: %.0f %%", humidity*100);
             textWidth = MeasureText(intensityString, 20);
             DrawText(humString, center.x + 145 - textWidth / 2, center.y + 10, 20, DARKGRAY);
-
-            char tsString[16];
-            sprintf(tsString, "%d ts", ts);
-            DrawText(tsString, SCREEN_WIDTH - center.x - 30, center.y, 20, DARKGRAY);
-        }   
+        }
+        char tsString[16];
+        sprintf(tsString, "%d ts", ts);
+        DrawText(tsString, SCREEN_WIDTH - center.x - 30, center.y, 20, WHITE);
+          
 
         EndDrawing();
     }

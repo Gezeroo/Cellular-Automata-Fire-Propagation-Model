@@ -36,7 +36,7 @@ double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
 
-double humidity = 0.2; //gamma
+double humidity = 0.4; //gamma
 
 double windIntensity = 0; //delta
 double baseFireIntesity = 0.38; //beta
