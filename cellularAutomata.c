@@ -38,12 +38,12 @@ double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
 
-double humidity = 0; //gamma
-double windIntensity = 0.8; //delta
+double humidity = 0.3; //gamma
+double windIntensity = 0; //delta
 double baseFireIntesity = 0.55; //beta
 Direction windDirection = W;
 
-double slopeCoeficient = 0.8; //alfa
+double slopeCoeficient = 0; //alfa
 
 double calorie[3] = {0.24,0.16,0.08};
 int alpha = 6;
@@ -514,7 +514,7 @@ int main() {
     int ts = 0;
     int altitude = 100;
     while (!WindowShouldClose()) {
-        //if(ts == 20 || ts == 50 || ts == 100 || ts == 200 || ts == 300) paused = true;
+        if(ts == 20 || ts == 50 || ts == 100 || ts == 200 || ts == 300) paused = true;
         if(IsKeyPressed(KEY_ENTER)){
             DrawText("Simulation not initiated", 10, 10, 20, RED);
             if(started){
@@ -524,7 +524,7 @@ int main() {
             }
             else{
                 SaveInitialPreset();
-                paused = !paused;
+                paused = false;
             }
             started = !started;
             if(started)
