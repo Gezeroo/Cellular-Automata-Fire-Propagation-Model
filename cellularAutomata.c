@@ -43,10 +43,10 @@ double emberFireParam = 0.2;
 double humidity = 0.3;          // gamma
 double windIntensity = 0;       // delta
 double baseFireIntesity = 0.55; // beta
-Direction windDirection = W;
+Direction windDirection = N;
 
 double slopeCoeficient = 0.078; // alfa
-double distanceBetweenCells = 10;
+double distanceBetweenCells = 8;
 
 double calorie[3] = {0.24, 0.16, 0.08};
 
@@ -126,9 +126,9 @@ void SetProbabilities()
 
 void InitGrid(int type)
 {
-    int div = 32;
+    int div = 128;
     int frac = COLS / div;
-    int altitude = 5;
+    int altitude = 1;
 
     for (int x = 0; x < COLS; x++)
     {
@@ -674,7 +674,7 @@ void PaintGrid()
                             end = (Vector2){px + CELL_SIZE - 1, py + CELL_SIZE};
                         }
 
-                        DrawLineEx(start, end, 1.5f, BLACK);
+                        DrawLineEx(start, end, 1.5f, DARKGRAY);
                     }
                 }
             }
