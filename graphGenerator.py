@@ -2,73 +2,45 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Lê o CSV
-df = pd.read_csv("output.csv")
+nomes_imgs = ['output_0_.csv', 'output_1_.csv','output_2_.csv','output_3_.csv']
+nomes_imgsA = ['outputAlpha_0_.csv', 'outputAlpha_1_.csv','outputAlpha_2_.csv','outputAlpha_3_.csv','outputAlpha_4_.csv']
+saidas = ['20','40','60','80']
+saidasA = ['0.078','0.24','0.5','0.76','1']
+
+
+df = pd.read_csv('output_0_.csv')
 
 # Cria o gráfico de linha
-plt.plot(df['index'], df['veg1'], label='Vegetação 1')
-plt.plot(df['index'], df['veg2'], label='Vegetação 2')
-plt.plot(df['index'], df['veg3'], label='Vegetação 3')
+plt.plot(df['index'], df['veg2'], label='Floresta')
+plt.plot(df['index'], df['veg1'], label='Savana')
+plt.plot(df['index'], df['veg3'], label='Campo')
 
 # Configurações do gráfico
 plt.xlabel('Passos de tempo')
 plt.ylabel('Área queimada')
-plt.title('Humidade 30%')
+plt.title('umidade 80%')
 plt.ylim(0,1)
 #plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("grafico_vetor.png")
+plt.savefig("umidade80.png")
 plt.clf()
 
-df = pd.read_csv("outputAltitudes.csv")
-
-plt.plot(df['index'], df['Aveg1L'], label='Subida')
-plt.plot(df['index'], df['Aveg1R'], label='Descida')
-plt.xlabel('Passos de tempo')
-plt.ylabel('Área queimada')
-plt.title('Area queimada subida x descida')
-plt.ylim(0,0.5)
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.savefig("grafico_vetorVeg1Altitude.png")
-plt.clf()
-
-plt.plot(df['index'], df['Aveg2L'], label='Subida')
-plt.plot(df['index'], df['Aveg2R'], label='Descida')
-plt.xlabel('Passos de tempo')
-plt.ylabel('Área queimada')
-plt.title('Area queimada subida x descida')
-plt.ylim(0,0.5)
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.savefig("grafico_vetorVeg2Altitude.png")
-plt.clf()
-
-plt.plot(df['index'], df['Aveg3L'], label='Subida')
-plt.plot(df['index'], df['Aveg4L'], label='Descida')
-plt.xlabel('Passos de tempo')
-plt.ylabel('Área queimada')
-plt.title('Area queimada subida x descida')
-plt.ylim(0,0.5)
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.savefig("grafico_vetorVeg3Altitude.png")
-plt.clf()
-
-plt.plot(df['index'], df['Aveg1L'], label='Vegetação 1 - Subida')
-plt.plot(df['index'], df['Aveg1R'], label='Vegetação 1 - Descida')
-plt.plot(df['index'], df['Aveg2L'], label='Vegetação 2 - Subida')
-plt.plot(df['index'], df['Aveg2R'], label='Vegetação 2 - Descida')
-plt.plot(df['index'], df['Aveg3L'], label='Vegetação 3 - Subida')
-plt.plot(df['index'], df['Aveg4L'], label='Vegetação 3 - Descida')
-plt.xlabel('Passos de tempo')
-plt.ylabel('Área queimada')
-plt.title('Alfa = 1')
-plt.ylim(0,0.5)
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.savefig("grafico_vetorAlfa.png")
+#
+#for i in range(0,5):
+#    df = pd.read_csv(nomes_imgsA[i])
+#    plt.plot(df['index'], df['Aveg2L'], label='Floresta - Subida')
+#    plt.plot(df['index'], df['Aveg2R'], label='Floresta - Descida')
+#    plt.plot(df['index'], df['Aveg1L'], label='Savana - Subida')
+#    plt.plot(df['index'], df['Aveg1R'], label='Savana - Descida')
+#    plt.plot(df['index'], df['Aveg3L'], label='Campo - Subida')
+#    plt.plot(df['index'], df['Aveg4L'], label='Campo - Descida')
+#    plt.xlabel('Passos de tempo')
+#    plt.ylabel('Área queimada')
+#    plt.title('Alfa = ' + saidasA[i])
+#    plt.ylim(0,0.5)
+#    plt.legend()
+#    plt.grid(True)
+#    plt.tight_layout()
+#    plt.savefig("altitude" + saidasA[i] + ".png")
+#    plt.clf()

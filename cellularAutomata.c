@@ -41,17 +41,18 @@ double stableFireParam = 1.0;
 double emberFireParam = 0.2;
 
 double humidity = 0.3;          // gamma
-double windIntensity = 0;       // delta
+double windIntensity = 0.25;      // delta
 double baseFireIntesity = 0.55; // beta
-Direction windDirection = N;
+Direction windDirection = W;
 
-double slopeCoeficient = 0.078; // alfa
+double slopeCoeficient = 0.78; // alfa_r
 double distanceBetweenCells = 8;
 
 double calorie[3] = {0.24, 0.16, 0.08};
 
-int idleTime = 200;
-int alpha = 6;
+int idleTime = 150;
+int alpha = 8;
+
 
 /* -------------------------- */
 
@@ -59,7 +60,7 @@ CellState grid[COLS][ROWS];
 CellState buffer[COLS][ROWS];
 CellState initialStates[COLS][ROWS];
 int ticks[COLS][ROWS];
-int altitudes[COLS][ROWS];
+double altitudes[COLS][ROWS];
 double combustionMatrix[3][3];
 double rMatrix[3][3];
 bool paused = true;
@@ -507,8 +508,8 @@ void spreadFire(int x, int y)
         }
         break;
     case ash:
-        rnd = (double)rand() / (double)RAND_MAX;
-        if (rnd <= (pow(ticks[x][y] - idleTime, 2)) / pow(10, alpha) && (ticks[x][y] >= idleTime))
+        double prob = pow(ticks[x][y] - idleTime, 2) / (double)pow(10, alpha);
+        if ((rnd <= prob) && (ticks[x][y] >= idleTime))
         {
             ticks[x][y] = 0;
             buffer[x][y] = initialStates[x][y];
@@ -689,7 +690,7 @@ float GetAngleFromDirection(int dir)
 
 int main()
 {
-
+    srand(77);
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AC - Raylib");
     SetTargetFPS(120);
     setWindMatrix();
@@ -728,7 +729,7 @@ int main()
             }
             started = !started;
             if (started)
-                SetTargetFPS(10);
+                SetTargetFPS(50);
             else
                 SetTargetFPS(120);
         }

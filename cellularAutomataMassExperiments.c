@@ -1,25 +1,25 @@
-#include "raylib.h"
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
 #include <Math.h>
 
-
 #define COLS 128
 #define ROWS 128
 
-typedef enum{
+typedef enum
+{
     vegetation_1,
-    vegetation_2, 
+    vegetation_2,
     vegetation_3,
-    initial_fire, 
-    stable_fire, 
-    ember, 
-    water,  
+    initial_fire,
+    stable_fire,
+    ember,
+    water,
     ash
-}CellState;
+} CellState;
 
-typedef enum{
+typedef enum
+{
     N,
     NE,
     E,
@@ -36,9 +36,9 @@ double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
 
-double humidity = 0.3;          // gamma
+double humidity = 0.8;          // gamma
 double windIntensity = 0;       // delta
-double baseFireIntesity = 0.55; // beta
+double baseFireIntesity = 0.45; // beta
 Direction windDirection = N;
 
 double slopeCoeficient = 1; // alfa
@@ -46,9 +46,8 @@ double distanceBetweenCells = 8;
 
 double calorie[3] = {0.24, 0.16, 0.08};
 
-int idleTime = 200;
-int alpha = 6;
-
+int idleTime = 0;
+int alpha = 9;
 
 /* -------------------------- */
 
@@ -56,52 +55,62 @@ CellState grid[COLS][ROWS];
 CellState buffer[COLS][ROWS];
 CellState initialStates[COLS][ROWS];
 int ticks[COLS][ROWS];
-int altitudes[COLS][ROWS];
+double altitudes[COLS][ROWS];
 double combustionMatrix[3][3];
 double rMatrix[3][3];
 
-void setWindMatrix(){
+void setWindMatrix()
+{
     double arrayOfProbabilities[8];
     double shift;
-    for(int i = 0; i < 8; i++){
+    for (int i = 0; i < 8; i++)
+    {
         shift = ((i + windDirection + 1) % 8);
-        arrayOfProbabilities[i] = fabs((8 - shift*2) / 8);
-        if(arrayOfProbabilities[i] == 0) arrayOfProbabilities[i] = 7/8;
+        arrayOfProbabilities[i] = fabs((8 - shift * 2) / 8);
+        if (arrayOfProbabilities[i] == 0)
+            arrayOfProbabilities[i] = 7 / 8;
     }
-     rMatrix[0][0] = arrayOfProbabilities[0];
-     rMatrix[0][1] = arrayOfProbabilities[1];
-     rMatrix[0][2] = arrayOfProbabilities[2];
-     rMatrix[1][2] = arrayOfProbabilities[3];
-     rMatrix[2][2] = arrayOfProbabilities[4];
-     rMatrix[2][1] = arrayOfProbabilities[5];
-     rMatrix[2][0] = arrayOfProbabilities[6];
-     rMatrix[1][0] = arrayOfProbabilities[7];
-     rMatrix[1][1] = 0;
+    rMatrix[0][0] = arrayOfProbabilities[0];
+    rMatrix[0][1] = arrayOfProbabilities[1];
+    rMatrix[0][2] = arrayOfProbabilities[2];
+    rMatrix[1][2] = arrayOfProbabilities[3];
+    rMatrix[2][2] = arrayOfProbabilities[4];
+    rMatrix[2][1] = arrayOfProbabilities[5];
+    rMatrix[2][0] = arrayOfProbabilities[6];
+    rMatrix[1][0] = arrayOfProbabilities[7];
+    rMatrix[1][1] = 0;
 }
 
-double CalculateHumidityFactorProbability(){
-    if(humidity > 0 && humidity <= 0.25)
+double CalculateHumidityFactorProbability()
+{
+    if (humidity > 0 && humidity <= 0.25)
         return 1.5;
-    else if(humidity > 0.25 && humidity <= 0.5)
+    else if (humidity > 0.25 && humidity <= 0.5)
         return 1;
-    else if(humidity > 0.5 && humidity <= 0.75)
+    else if (humidity > 0.5 && humidity <= 0.75)
         return 0.8;
-    else if(humidity > 0.75 && humidity <= 1)
+    else if (humidity > 0.75 && humidity <= 1)
         return 0.6;
     return 0;
 }
 
-void SetProbabilities(){
-    for (int dx = 0; dx <= 2; dx++) {
-        for (int dy = 0; dy <= 2; dy++){
-            if (dx == 1 && dy == 1) {
+void SetProbabilities()
+{
+    for (int dx = 0; dx <= 2; dx++)
+    {
+        for (int dy = 0; dy <= 2; dy++)
+        {
+            if (dx == 1 && dy == 1)
+            {
                 combustionMatrix[dy][dx] = 0.0f;
                 continue;
-            } 
+            }
             double sigma = CalculateHumidityFactorProbability();
             double phi = (baseFireIntesity - (windIntensity * rMatrix[dx][dy])) * sigma;
-            if (phi > 1) phi = 1;
-            if(phi < 0) phi = 0;
+            if (phi > 1)
+                phi = 1;
+            if (phi < 0)
+                phi = 0;
 
             combustionMatrix[dx][dy] = phi;
         }
@@ -216,11 +225,16 @@ void InitGrid(int type)
     }
 }
 
-void SaveInitialPreset(){
-    for (int x = 0; x < COLS; x++) {
-        for (int y = 0; y < ROWS; y++) {
-            if(grid[x][y] == initial_fire) initialStates[x][y] = vegetation_1;
-            else{
+void SaveInitialPreset()
+{
+    for (int x = 0; x < COLS; x++)
+    {
+        for (int y = 0; y < ROWS; y++)
+        {
+            if (grid[x][y] == initial_fire)
+                initialStates[x][y] = vegetation_1;
+            else
+            {
                 initialStates[x][y] = grid[x][y];
             }
         }
@@ -390,8 +404,8 @@ void spreadFire(int x, int y)
         }
         break;
     case ash:
-        rnd = (double)rand() / (double)RAND_MAX;
-        if (rnd <= (pow(ticks[x][y] - idleTime, 2)) / pow(10, alpha) && (ticks[x][y] >= idleTime))
+        double prob = pow(ticks[x][y] - idleTime, 2) / (double)pow(10, alpha);
+        if ((rnd <= prob) && (ticks[x][y] >= idleTime))
         {
             ticks[x][y] = 0;
             buffer[x][y] = initialStates[x][y];
@@ -406,25 +420,34 @@ void spreadFire(int x, int y)
     }
 }
 
-void UpdateGrid() {
-    for (int x = 0; x < COLS; x++) {
-        for (int y = 0; y < ROWS; y++) {
-            spreadFire(x,y);
+void UpdateGrid()
+{
+    for (int x = 0; x < COLS; x++)
+    {
+        for (int y = 0; y < ROWS; y++)
+        {
+            spreadFire(x, y);
         }
     }
 
-    for (int x = 0; x < COLS; x++) {
-        for (int y = 0; y < ROWS; y++) {
+    for (int x = 0; x < COLS; x++)
+    {
+        for (int y = 0; y < ROWS; y++)
+        {
             grid[x][y] = buffer[x][y];
         }
     }
 }
 
-double countBurnedCells(){
+double countBurnedCells()
+{
     int count = 0;
-    for (int x = 0; x < COLS; x++) {
-        for (int y = 0; y < ROWS; y++) {
-            if(grid[x][y] == initial_fire || grid[x][y] == stable_fire || grid[x][y] == ember || grid[x][y] == ash){
+    for (int x = 0; x < COLS; x++)
+    {
+        for (int y = 0; y < ROWS; y++)
+        {
+            if (grid[x][y] == initial_fire || grid[x][y] == stable_fire || grid[x][y] == ember || grid[x][y] == ash)
+            {
                 count++;
             }
         }
@@ -432,36 +455,112 @@ double countBurnedCells(){
     return (double)count;
 }
 
-double countBurnedCellsLeftRight(double* left, double* right){
+double countBurnedCellsLeftRight(double *left, double *right)
+{
     int count = 0;
-    for (int x = 0; x < COLS; x++) {
-        for (int y = 0; y < ROWS; y++) {
-            if(x < COLS/2){
-                if(grid[x][y] == initial_fire || grid[x][y] == stable_fire || grid[x][y] == ember || grid[x][y] == ash){
+    for (int x = 0; x < COLS; x++)
+    {
+        for (int y = 0; y < ROWS; y++)
+        {
+            if (x < COLS / 2)
+            {
+                if (grid[x][y] == initial_fire || grid[x][y] == stable_fire || grid[x][y] == ember || grid[x][y] == ash)
+                {
                     (*left)++;
                 }
             }
-            else{
-                if(grid[x][y] == initial_fire || grid[x][y] == stable_fire || grid[x][y] == ember || grid[x][y] == ash){
+            else
+            {
+                if (grid[x][y] == initial_fire || grid[x][y] == stable_fire || grid[x][y] == ember || grid[x][y] == ash)
+                {
                     (*right)++;
                 }
             }
-
         }
     }
     return (double)count;
 }
 
-int main() {
+int main()
+{
     setWindMatrix();
     SetProbabilities();
-    int test = 0;
-    double actualBurtCellQtd = 0;
-    double lastBurtCellQtd = 0;
+
+    InitGrid(0);
+    clock_t start = clock();
+
+    //double humidities[4] = {0.2, 0.4, 0.6, 0.8};
+
     double sumExperiment1[500] = {0};
     double sumExperiment2[500] = {0};
     double sumExperiment3[500] = {0};
+    
+    double experimentMean1[500];
+    double experimentMean2[500];
+    double experimentMean3[500];
 
+    for (int test = 0; test < 100; test++)
+    {
+        InitGrid(0);
+        for (int ts = 0; ts < 500; ts++)
+        {
+            UpdateGrid();
+            sumExperiment1[ts] += countBurnedCells();
+        }
+    }
+
+    for (int test = 0; test < 100; test++)
+    {
+        InitGrid(1);
+        for (int ts = 0; ts < 500; ts++)
+        {
+            UpdateGrid();
+            sumExperiment2[ts] += countBurnedCells();
+        }
+    }
+
+    for (int test = 0; test < 100; test++)
+    {
+        InitGrid(2);
+        for (int ts = 0; ts < 500; ts++)
+        {
+            UpdateGrid();
+            sumExperiment3[ts] += countBurnedCells();
+        }
+    }
+    for (int i = 0; i < 500; i++)
+    {
+
+        double mean = sumExperiment1[i] / 100;
+        double mean2 = sumExperiment2[i] / 100;
+        double mean3 = sumExperiment3[i] / 100;
+
+        experimentMean1[i] = mean / (COLS * ROWS);
+        experimentMean2[i] = mean2 / (COLS * ROWS);
+        experimentMean3[i] = mean3 / (COLS * ROWS);
+    }
+
+    char filename[30];
+    sprintf(filename, "%s_%d_.csv", "output", 0);
+    FILE *file = fopen(filename, "w");
+    if (file == NULL)
+    {
+        perror("Error opening file");
+        return 1;
+    }
+
+    fprintf(file, "index,veg1,veg2,veg3\n");
+
+    for (int i = 0; i < 500; i++)
+    {
+        fprintf(file, "%d,%f,%f,%f\n", i, experimentMean1[i], experimentMean2[i], experimentMean3[i]);
+    }
+
+    fclose(file);
+
+/*
+double alphas[5] = {0.078, 0.24, 0.5, 0.76,1};
+for(int k = 0; k < 5; k++){
     double sumExperiment4Left[500] = {0};
     double sumExperiment4Right[500] = {0};
     double sumExperiment5Left[500] = {0};
@@ -469,44 +568,7 @@ int main() {
     double sumExperiment6Left[500] = {0};
     double sumExperiment6Right[500] = {0};
 
-    double experimentMean[500];
-    double experimentMean1[500];
-    double experimentMean2[500];
-    double experimentMean3[500];
-
-    double experimentMean4L[500];
-    double experimentMean4R[500];
-    double experimentMean5L[500];
-    double experimentMean5R[500];
-    double experimentMean6L[500];
-    double experimentMean6R[500];
-
-    InitGrid(0);
-    clock_t start = clock();
-    /*
-    for(int test = 0; test < 100; test++){
-        InitGrid(0);
-        for(int ts = 0; ts < 500; ts++){
-            UpdateGrid();
-            sumExperiment1[ts] += countBurnedCells();
-        }
-    }
-
-    for(int test = 0; test < 100; test++){
-        InitGrid(1);
-        for(int ts = 0; ts < 500; ts++){
-            UpdateGrid();
-            sumExperiment2[ts] += countBurnedCells();
-        }
-    }
-
-    for(int test = 0; test < 100; test++){
-        InitGrid(2);
-        for(int ts = 0; ts < 500; ts++){
-            UpdateGrid();
-            sumExperiment3[ts] += countBurnedCells();
-        }
-    }*/
+    slopeCoeficient = alphas[k];
 
     for(int test = 0; test < 100; test++){
         InitGrid(6);
@@ -531,18 +593,16 @@ int main() {
             countBurnedCellsLeftRight(&sumExperiment6Left[ts],&sumExperiment6Right[ts]);
         }
     }
-    clock_t end = clock();
+
+
+    double experimentMean4L[500];
+    double experimentMean4R[500];
+    double experimentMean5L[500];
+    double experimentMean5R[500];
+    double experimentMean6L[500];
+    double experimentMean6R[500];
 
     for(int i = 0; i < 500; i++){
-        /*
-        double mean = sumExperiment1[i]/100;
-        double mean2 = sumExperiment2[i]/100;
-        double mean3 = sumExperiment3[i]/100;
-
-        experimentMean1[i] = mean/(COLS*ROWS);
-        experimentMean2[i] = mean2/(COLS*ROWS);
-        experimentMean3[i] = mean3/(COLS*ROWS);
-        */
         double mean4L = sumExperiment4Left[i]/100;
         double mean4R = sumExperiment4Right[i]/100;
         double mean5L = sumExperiment5Left[i]/100;
@@ -560,24 +620,9 @@ int main() {
         experimentMean6R[i] = mean6R/(COLS*ROWS);
     }
 
-
-    /*
-    FILE *file = fopen("output.csv", "w");
-    if (file == NULL) {
-        perror("Error opening file");
-        return 1;
-    }
-
-    fprintf(file, "index,veg1,veg2,veg3\n");
-
-    for (int i = 0; i < 500; i++) {
-        fprintf(file, "%d,%f,%f,%f\n", i, experimentMean1[i], experimentMean2[i], experimentMean3[i]);
-    }
-
-    fclose(file);
-    */
-
-    FILE *file = fopen("outputAltitudes.csv", "w");
+    char filename[30];
+    sprintf(filename, "%s_%d_.csv", "outputAlpha", k);
+    FILE *file = fopen(filename, "w");
     if (file == NULL) {
         perror("Error opening file");
         return 1;
@@ -591,7 +636,13 @@ int main() {
 
     fclose(file);
 
-    float seconds = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Tempo: %f\n", seconds);
-    return 0;
+
+}
+*/
+
+clock_t end = clock();
+
+float seconds = (float)(end - start) / CLOCKS_PER_SEC;
+printf("Tempo: %f\n", seconds);
+return 0;
 }
