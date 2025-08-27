@@ -514,7 +514,7 @@ void spreadFire(int x, int y)
             ticks[x][y] = 0;
             buffer[x][y] = initialStates[x][y];
         }
-        ticks[x][y]++;
+        else ticks[x][y]++;
         break;
     case water:
         buffer[x][y] = grid[x][y];

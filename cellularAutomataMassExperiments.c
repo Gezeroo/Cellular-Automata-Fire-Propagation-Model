@@ -36,18 +36,18 @@ double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
 
-double humidity = 0.8;          // gamma
+double humidity = 0.2;          // gamma
 double windIntensity = 0;       // delta
-double baseFireIntesity = 0.45; // beta
+double baseFireIntesity = 0.55; // beta
 Direction windDirection = N;
 
-double slopeCoeficient = 1; // alfa
+double slopeCoeficient = 0; // alfa
 double distanceBetweenCells = 8;
 
 double calorie[3] = {0.24, 0.16, 0.08};
 
 int idleTime = 0;
-int alpha = 9;
+int alpha = 6;
 
 /* -------------------------- */
 
@@ -58,6 +58,7 @@ int ticks[COLS][ROWS];
 double altitudes[COLS][ROWS];
 double combustionMatrix[3][3];
 double rMatrix[3][3];
+double burnHistory[COLS][ROWS];
 
 void setWindMatrix()
 {
@@ -105,10 +106,7 @@ void SetProbabilities()
                 combustionMatrix[dy][dx] = 0.0f;
                 continue;
             }
-            double sigma = CalculateHumidityFactorProbability();
-            double phi = (baseFireIntesity - (windIntensity * rMatrix[dx][dy])) * sigma;
-            if (phi > 1)
-                phi = 1;
+            double phi = (baseFireIntesity - (windIntensity * rMatrix[dx][dy]));
             if (phi < 0)
                 phi = 0;
 
@@ -243,7 +241,8 @@ void SaveInitialPreset()
 
 void spreadFire(int x, int y)
 {
-    double rnd = (double)rand() / (double)RAND_MAX;
+    double sigma = CalculateHumidityFactorProbability();
+    double rnd = ((rand() << 15) | rand()) / (double)((1 << 30) - 1);
     double elevation;
     int maxTicksEmber = 10;
     int maxTicksInitialFire = 3;
@@ -270,11 +269,14 @@ void spreadFire(int x, int y)
                 else
                     elevation = exp(slopeCoeficient * atan((altitudes[nx][ny] - altitudes[x][y]) / distanceBetweenCells));
 
-                if ((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * initFireParam * calorie[0] * elevation)))
+                if ((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * initFireParam * calorie[0] * elevation * sigma))){
                     buffer[x][y] = initial_fire;
-                else if ((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[0] * elevation)))
+                    burnHistory[x][y] = 1;
+                }
+                    
+                else if ((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[0] * elevation * sigma)))
                     buffer[x][y] = initial_fire;
-                else if ((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[0] * elevation)))
+                else if ((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[0] * elevation * sigma)))
                     buffer[x][y] = initial_fire;
             }
         }
@@ -299,11 +301,14 @@ void spreadFire(int x, int y)
                 else
                     elevation = exp(slopeCoeficient * atan((altitudes[nx][ny] - altitudes[x][y]) / distanceBetweenCells));
 
-                if ((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * initFireParam * calorie[1] * elevation)))
+                if ((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * initFireParam * calorie[1] * elevation * sigma))){
                     buffer[x][y] = initial_fire;
-                else if ((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[1] * elevation)))
+                    burnHistory[x][y] = 1;
+                }
+                    
+                else if ((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[1] * elevation * sigma)))
                     buffer[x][y] = initial_fire;
-                else if ((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[1] * elevation)))
+                else if ((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[1] * elevation * sigma)))
                     buffer[x][y] = initial_fire;
             }
         }
@@ -328,11 +333,13 @@ void spreadFire(int x, int y)
                 else
                     elevation = exp(slopeCoeficient * atan((altitudes[nx][ny] - altitudes[x][y]) / distanceBetweenCells));
 
-                if ((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * initFireParam * calorie[2] * elevation)))
+                if ((grid[nx][ny] == initial_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * initFireParam * calorie[2] * elevation * sigma))){
                     buffer[x][y] = initial_fire;
-                else if ((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[2] * elevation)))
+                    burnHistory[x][y] = 1;
+                }
+                else if ((grid[nx][ny] == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[2] * elevation * sigma)))
                     buffer[x][y] = initial_fire;
-                else if ((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[2] * elevation)))
+                else if ((grid[nx][ny] == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[2] * elevation * sigma)))
                     buffer[x][y] = initial_fire;
             }
         }
@@ -404,13 +411,13 @@ void spreadFire(int x, int y)
         }
         break;
     case ash:
-        double prob = pow(ticks[x][y] - idleTime, 2) / (double)pow(10, alpha);
+        double prob = (double)pow(ticks[x][y] - idleTime, 2) / (double)pow(10, alpha);
         if ((rnd <= prob) && (ticks[x][y] >= idleTime))
         {
             ticks[x][y] = 0;
             buffer[x][y] = initialStates[x][y];
         }
-        ticks[x][y]++;
+        else ticks[x][y]++;
         break;
     case water:
         buffer[x][y] = grid[x][y];
@@ -446,10 +453,8 @@ double countBurnedCells()
     {
         for (int y = 0; y < ROWS; y++)
         {
-            if (grid[x][y] == initial_fire || grid[x][y] == stable_fire || grid[x][y] == ember || grid[x][y] == ash)
-            {
+            if(burnHistory[x][y] == 1)
                 count++;
-            }
         }
     }
     return (double)count;
@@ -481,6 +486,13 @@ double countBurnedCellsLeftRight(double *left, double *right)
     return (double)count;
 }
 
+void resetHistory(){
+    for(int i = 0; i < COLS; i++){
+        for(int j = 0; j < ROWS; j++)
+            burnHistory[i][j] = 0;
+    }
+}
+
 int main()
 {
     setWindMatrix();
@@ -489,55 +501,24 @@ int main()
     InitGrid(0);
     clock_t start = clock();
 
-    //double humidities[4] = {0.2, 0.4, 0.6, 0.8};
+    double sumExperiments[3][500];
+    double resultExperiments[3][500];
 
-    double sumExperiment1[500] = {0};
-    double sumExperiment2[500] = {0};
-    double sumExperiment3[500] = {0};
-    
-    double experimentMean1[500];
-    double experimentMean2[500];
-    double experimentMean3[500];
-
-    for (int test = 0; test < 100; test++)
-    {
-        InitGrid(0);
-        for (int ts = 0; ts < 500; ts++)
+    for(int i = 0; i < 3; i++){
+        for (int test = 0; test < 100; test++)
         {
-            UpdateGrid();
-            sumExperiment1[ts] += countBurnedCells();
+            InitGrid(i);
+            for (int ts = 0; ts < 500; ts++){
+                UpdateGrid();
+                sumExperiments[i][ts] += countBurnedCells();
+            }
+            resetHistory();
         }
-    }
-
-    for (int test = 0; test < 100; test++)
-    {
-        InitGrid(1);
-        for (int ts = 0; ts < 500; ts++)
+        for (int j = 0; j < 500; j++)
         {
-            UpdateGrid();
-            sumExperiment2[ts] += countBurnedCells();
+            double mean = sumExperiments[i][j]/100;
+            resultExperiments[i][j] = mean/(COLS*ROWS);
         }
-    }
-
-    for (int test = 0; test < 100; test++)
-    {
-        InitGrid(2);
-        for (int ts = 0; ts < 500; ts++)
-        {
-            UpdateGrid();
-            sumExperiment3[ts] += countBurnedCells();
-        }
-    }
-    for (int i = 0; i < 500; i++)
-    {
-
-        double mean = sumExperiment1[i] / 100;
-        double mean2 = sumExperiment2[i] / 100;
-        double mean3 = sumExperiment3[i] / 100;
-
-        experimentMean1[i] = mean / (COLS * ROWS);
-        experimentMean2[i] = mean2 / (COLS * ROWS);
-        experimentMean3[i] = mean3 / (COLS * ROWS);
     }
 
     char filename[30];
@@ -553,7 +534,7 @@ int main()
 
     for (int i = 0; i < 500; i++)
     {
-        fprintf(file, "%d,%f,%f,%f\n", i, experimentMean1[i], experimentMean2[i], experimentMean3[i]);
+        fprintf(file, "%d,%f,%f,%f\n", i, resultExperiments[0][i], resultExperiments[1][i], resultExperiments[2][i]);
     }
 
     fclose(file);
