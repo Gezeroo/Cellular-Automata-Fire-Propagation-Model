@@ -23,7 +23,7 @@ plt.ylim(0,1)
 #plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("teste80.png")
+plt.savefig("umidade80.png")
 plt.clf()
 
 #

@@ -42,7 +42,7 @@ double emberFireParam = 0.2;
 
 double humidity = 0.3;          // gamma
 double windIntensity = 0.25;      // delta
-double baseFireIntesity = 0.55; // beta
+double baseFireIntesity = 1; // beta
 Direction windDirection = W;
 
 double slopeCoeficient = 0.78; // alfa_r

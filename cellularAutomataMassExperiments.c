@@ -5,6 +5,8 @@
 
 #define COLS 128
 #define ROWS 128
+#define MAXTS 500
+#define MAXTESTS 100
 
 typedef enum
 {
@@ -36,9 +38,9 @@ double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
 
-double humidity = 0.2;          // gamma
+double humidity = 0.8;          // gamma
 double windIntensity = 0;       // delta
-double baseFireIntesity = 0.55; // beta
+double baseFireIntesity = 1; // beta
 Direction windDirection = N;
 
 double slopeCoeficient = 0; // alfa
@@ -501,20 +503,22 @@ int main()
     InitGrid(0);
     clock_t start = clock();
 
-    double sumExperiments[3][500];
-    double resultExperiments[3][500];
+    double sumExperiments[3][MAXTS];
+    double resultExperiments[3][MAXTS];
 
     for(int i = 0; i < 3; i++){
-        for (int test = 0; test < 100; test++)
+        for(int k = 0; k < MAXTS; k++)
+            sumExperiments[i][k] = 0.0;
+        for (int test = 0; test < MAXTESTS; test++)
         {
             InitGrid(i);
-            for (int ts = 0; ts < 500; ts++){
+            for (int ts = 0; ts < MAXTS; ts++){
                 UpdateGrid();
                 sumExperiments[i][ts] += countBurnedCells();
             }
             resetHistory();
         }
-        for (int j = 0; j < 500; j++)
+        for (int j = 0; j < MAXTS; j++)
         {
             double mean = sumExperiments[i][j]/100;
             resultExperiments[i][j] = mean/(COLS*ROWS);
@@ -532,7 +536,7 @@ int main()
 
     fprintf(file, "index,veg1,veg2,veg3\n");
 
-    for (int i = 0; i < 500; i++)
+    for (int i = 0; i < MAXTS; i++)
     {
         fprintf(file, "%d,%f,%f,%f\n", i, resultExperiments[0][i], resultExperiments[1][i], resultExperiments[2][i]);
     }
