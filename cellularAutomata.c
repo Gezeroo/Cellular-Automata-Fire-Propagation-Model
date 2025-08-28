@@ -178,7 +178,7 @@ int main()
     int altitude = 100;
     while (!WindowShouldClose())
     {
-        if (ts == 20 || ts == 50 || ts == 100 || ts == 200 || ts == 300)
+        if (ts == 20 || ts == 50 || ts == 100 || ts == 200 || ts == 300 || ts == 500)
             paused = true;
         if (IsKeyPressed(KEY_ENTER))
         {
@@ -253,7 +253,7 @@ int main()
         if (IsKeyPressed(KEY_F))
         {
             gridType++;
-            if (gridType > 14)
+            if (gridType > 8)
                 gridType = 0;
             if (!started)
                 InitGrid(gridType);
@@ -330,7 +330,7 @@ int main()
         DrawText(tsString, SCREEN_WIDTH - center.x - 30, center.y, 20, WHITE);
 
         char countString[16];
-        sprintf(countString, "%.f%%", (countBurnedCells()/((COLS-1)*(ROWS-1)))*100);
+        sprintf(countString, "%.f%%", (countBurnedCells()/((COLS)*(ROWS)))*100);
         DrawText(countString, SCREEN_WIDTH - center.x - 30, center.y + 20, 20, WHITE);
 
         EndDrawing();

@@ -72,6 +72,7 @@ void SaveInitialPreset();
 void spreadFire(int x, int y);
 void UpdateGrid();
 double countBurnedCells();
+double countBurnedCellsEachSide(double *left, double *right);
 void resetHistory();
 
 #endif

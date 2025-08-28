@@ -13,18 +13,18 @@ double initFireParam = 0.6;
 double stableFireParam = 1.0;
 double emberFireParam = 0.2;
 
-double humidity = 0.2;          // gamma
+double humidity = 0.3;          // gamma
 double windIntensity = 0;       // delta
 double baseFireIntesity = 0.55;    // beta
-Direction windDirection = N;
+Direction windDirection = SW;
 
-double slopeCoeficient = 0; // alfa
+double slopeCoeficient = 0.078; // alfa
 double distanceBetweenCells = 8;
 
 double calorie[3] = {0.24, 0.16, 0.08};
 
 int idleTime = 0;
-int alpha = 10;
+int alpha = 6;
 
 /* -------------------------- */
 
@@ -77,8 +77,6 @@ void SetProbabilities()
             }
             double sigma = CalculateHumidityFactorProbability();
             double phi = (baseFireIntesity - (windIntensity * rMatrix[dx][dy])) * sigma;
-            if (phi < 0.01)
-                phi = 0.01;
 
             combustionMatrix[dx][dy] = phi;
         }
@@ -219,7 +217,7 @@ void spreadFire(int x, int y)
     double rnd = r / (double)((1u << 30) - 1u);
     double elevation;
     int maxTicksEmber = 10;
-    int maxTicksInitialFire = 10;
+    int maxTicksInitialFire = 3;
     int maxTicksStableFire = 3;
     switch (grid[x][y].state)
     {
@@ -239,19 +237,24 @@ void spreadFire(int x, int y)
                     continue;
 
                 if (abs(dx) == 1 && abs(dy) == 1)
-                    elevation = exp(slopeCoeficient * atan((grid[nx][ny].altitude - grid[nx][ny].altitude) / (distanceBetweenCells * sqrt(2))));
+                    elevation = exp(slopeCoeficient * atan((grid[x][y].altitude - grid[nx][ny].altitude) / (distanceBetweenCells * sqrt(2))));
                 else
-                    elevation = exp(slopeCoeficient * atan((grid[nx][ny].altitude - grid[nx][ny].altitude) / distanceBetweenCells));
+                    elevation = exp(slopeCoeficient * atan((grid[x][y].altitude - grid[nx][ny].altitude) / distanceBetweenCells));
 
                 if ((grid[nx][ny].state == initial_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * initFireParam * calorie[0] * elevation))){
                     grid[x][y].buffer = initial_fire;
                     grid[x][y].burnHistory = 1;
                 }
                     
-                else if ((grid[nx][ny].state == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[0] * elevation)))
+                else if ((grid[nx][ny].state == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[0] * elevation))){
+                    grid[x][y].burnHistory = 1;
                     grid[x][y].buffer = initial_fire;
-                else if ((grid[nx][ny].state == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[0] * elevation)))
+                }
+                    
+                else if ((grid[nx][ny].state == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[0] * elevation))){
                     grid[x][y].buffer = initial_fire;
+                    grid[x][y].burnHistory = 1;
+                }
             }
         }
         break;
@@ -271,19 +274,24 @@ void spreadFire(int x, int y)
                     continue;
 
                 if (abs(dx) == 1 && abs(dy) == 1)
-                    elevation = exp(slopeCoeficient * atan((grid[nx][ny].altitude - grid[nx][ny].altitude) / (distanceBetweenCells * sqrt(2))));
+                    elevation = exp(slopeCoeficient * atan((grid[x][y].altitude - grid[nx][ny].altitude) / (distanceBetweenCells * sqrt(2))));
                 else
-                    elevation = exp(slopeCoeficient * atan((grid[nx][ny].altitude - grid[nx][ny].altitude) / distanceBetweenCells));
+                    elevation = exp(slopeCoeficient * atan((grid[x][y].altitude - grid[nx][ny].altitude) / distanceBetweenCells));
 
                 if ((grid[nx][ny].state == initial_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * initFireParam * calorie[1] * elevation))){
                     grid[x][y].buffer = initial_fire;
                     grid[x][y].burnHistory = 1;
                 }
                     
-                else if ((grid[nx][ny].state == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[1] * elevation)))
+                else if ((grid[nx][ny].state == stable_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * stableFireParam * calorie[1] * elevation))){
                     grid[x][y].buffer = initial_fire;
-                else if ((grid[nx][ny].state == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[1] * elevation)))
+                    grid[x][y].burnHistory = 1;
+                }
+                    
+                else if ((grid[nx][ny].state == ember) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * emberFireParam * calorie[1] * elevation))){
                     grid[x][y].buffer = initial_fire;
+                    grid[x][y].burnHistory = 1;
+                }
             }
         }
         break;
@@ -303,9 +311,9 @@ void spreadFire(int x, int y)
                     continue;
 
                 if (abs(dx) == 1 && abs(dy) == 1)
-                    elevation = exp(slopeCoeficient * atan((grid[nx][ny].altitude - grid[nx][ny].altitude) / (distanceBetweenCells * sqrt(2))));
+                    elevation = exp(slopeCoeficient * atan((grid[x][y].altitude - grid[nx][ny].altitude) / (distanceBetweenCells * sqrt(2))));
                 else
-                    elevation = exp(slopeCoeficient * atan((grid[nx][ny].altitude - grid[nx][ny].altitude) / distanceBetweenCells));
+                    elevation = exp(slopeCoeficient * atan((grid[x][y].altitude - grid[nx][ny].altitude) / distanceBetweenCells));
 
                 if ((grid[nx][ny].state == initial_fire) && (rnd <= (combustionMatrix[dx + 1][dy + 1] * initFireParam * calorie[2] * elevation))){
                     grid[x][y].buffer = initial_fire;
@@ -429,6 +437,32 @@ double countBurnedCells()
         {
             if(grid[x][y].burnHistory == 1)
                 count++;
+        }
+    }
+    return count;
+}
+
+double countBurnedCellsEachSide(double *left, double *right)
+{
+    double count = 0;
+    for (int x = 0; x < COLS; x++)
+    {
+        for (int y = 0; y < ROWS; y++)
+        {
+            if (x < COLS / 2)
+            {
+                if (grid[x][y].burnHistory == 1)
+                {
+                    (*left)++;
+                }
+            }
+            else
+            {
+                if (grid[x][y].burnHistory == 1)
+                {
+                    (*right)++;
+                }
+            }
         }
     }
     return count;
