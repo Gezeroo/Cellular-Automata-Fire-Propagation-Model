@@ -18,12 +18,12 @@ plt.plot(df['index'], df['veg3'], label='Campo')
 # Configurações do gráfico
 plt.xlabel('Passos de tempo')
 plt.ylabel('Área queimada')
-plt.title('umidade 80%')
+plt.title('umidade 20%')
 plt.ylim(0,1)
 #plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("umidade80.png")
+plt.savefig("umidadet20.png")
 plt.clf()
 
 #
