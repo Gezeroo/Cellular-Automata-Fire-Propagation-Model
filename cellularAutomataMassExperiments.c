@@ -4,20 +4,6 @@
 #include <Math.h>
 #include "automata.h"
 
-double countBurnedCells()
-{
-    double count = 0;
-    for (int x = 0; x < COLS; x++)
-    {
-        for (int y = 0; y < ROWS; y++)
-        {
-            if(grid[x][y].burnHistory == 1)
-                count++;
-        }
-    }
-    return count;
-}
-
 double countBurnedCellsLeftRight(double *left, double *right)
 {
     int count = 0;
@@ -44,14 +30,6 @@ double countBurnedCellsLeftRight(double *left, double *right)
     return (double)count;
 }
 
-void resetHistory(){
-    for(int x = 0; x < COLS; x++){
-        for(int y = 0; y < ROWS; y++)
-            if (x == COLS / 2 && y == ROWS / 2) grid[x][y].burnHistory = 1;
-            else grid[x][y].burnHistory = 0;
-    }
-}
-
 int main()
 {
     setWindMatrix();
@@ -74,7 +52,6 @@ int main()
                 if(countBurnedCells() >= (COLS*ROWS)) printf("%f",countBurnedCells());
                 sumExperiments[i][ts] += countBurnedCells();
             }
-            resetHistory();
         }
         for (int j = 0; j < MAXTS; j++)
         {

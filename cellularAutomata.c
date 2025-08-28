@@ -329,6 +329,10 @@ int main()
         sprintf(tsString, "%d ts", ts);
         DrawText(tsString, SCREEN_WIDTH - center.x - 30, center.y, 20, WHITE);
 
+        char countString[16];
+        sprintf(countString, "%.f%%", (countBurnedCells()/((COLS-1)*(ROWS-1)))*100);
+        DrawText(countString, SCREEN_WIDTH - center.x - 30, center.y + 20, 20, WHITE);
+
         EndDrawing();
     }
 

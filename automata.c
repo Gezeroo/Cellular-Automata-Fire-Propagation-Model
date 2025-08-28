@@ -15,7 +15,7 @@ double emberFireParam = 0.2;
 
 double humidity = 0.2;          // gamma
 double windIntensity = 0;       // delta
-double baseFireIntesity = 1;    // beta
+double baseFireIntesity = 0.55;    // beta
 Direction windDirection = N;
 
 double slopeCoeficient = 0; // alfa
@@ -24,7 +24,7 @@ double distanceBetweenCells = 8;
 double calorie[3] = {0.24, 0.16, 0.08};
 
 int idleTime = 0;
-int alpha = 6;
+int alpha = 10;
 
 /* -------------------------- */
 
@@ -87,6 +87,7 @@ void SetProbabilities()
 
 void InitGrid(int type)
 {
+    resetHistory();
     int div = 128;
     int frac = COLS / div;
     int altitude = 1;
@@ -218,7 +219,7 @@ void spreadFire(int x, int y)
     double rnd = r / (double)((1u << 30) - 1u);
     double elevation;
     int maxTicksEmber = 10;
-    int maxTicksInitialFire = 3;
+    int maxTicksInitialFire = 10;
     int maxTicksStableFire = 3;
     switch (grid[x][y].state)
     {
@@ -416,5 +417,27 @@ void UpdateGrid()
         {
             grid[x][y].state = grid[x][y].buffer;
         }
+    }
+}
+
+double countBurnedCells()
+{
+    double count = 0;
+    for (int x = 0; x < COLS; x++)
+    {
+        for (int y = 0; y < ROWS; y++)
+        {
+            if(grid[x][y].burnHistory == 1)
+                count++;
+        }
+    }
+    return count;
+}
+
+void resetHistory(){
+    for(int x = 0; x < COLS; x++){
+        for(int y = 0; y < ROWS; y++)
+            if (x == COLS / 2 && y == ROWS / 2) grid[x][y].burnHistory = 1;
+            else grid[x][y].burnHistory = 0;
     }
 }

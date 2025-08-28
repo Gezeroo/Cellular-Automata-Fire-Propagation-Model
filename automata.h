@@ -71,5 +71,7 @@ void InitGrid(int type);
 void SaveInitialPreset();
 void spreadFire(int x, int y);
 void UpdateGrid();
+double countBurnedCells();
+void resetHistory();
 
 #endif
