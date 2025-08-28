@@ -14,5 +14,8 @@ A Cellular Automata Model in C language using Raylib for wildfire simulation
 # Code compilation for Mass Experiments (WINDOWS and LINUX):
 `gcc cellularAutomataMassExperiments.c automata.c`
 
+# To print graphs from the output in the Mass Experiments, run the python script graphGenerator.py:
+`py graphGenerator.py`
+
 # Running executable
-`./a.exe `
+`./<FileName>`
