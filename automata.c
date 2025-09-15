@@ -14,11 +14,11 @@ double stableFireParam = 1.0;
 double emberFireParam = 0.2;
 
 double humidity = 0.3;          // gamma
-double windIntensity = 0;       // delta
+double windIntensity = 0.24;       // delta
 double baseFireIntesity = 0.55;    // beta
-Direction windDirection = SW;
+Direction windDirection = W;
 
-double slopeCoeficient = 0.078; // alfa
+double slopeCoeficient = 0.76; // alfa
 double distanceBetweenCells = 8;
 
 double calorie[3] = {0.24, 0.16, 0.08};
@@ -88,7 +88,7 @@ void InitGrid(int type)
     resetHistory();
     int div = 128;
     int frac = COLS / div;
-    int altitude = 1;
+    int altitude = 3;
 
     for (int x = 0; x < COLS; x++)
     {

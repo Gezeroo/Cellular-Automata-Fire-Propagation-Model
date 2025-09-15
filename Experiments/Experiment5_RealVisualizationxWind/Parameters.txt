@@ -1,0 +1,16 @@
+double initFireParam = 0.6;
+double stableFireParam = 1.0;
+double emberFireParam = 0.2;
+
+double humidity = 0.3;          // gamma
+double windIntensity = 0.5;       // delta
+double baseFireIntesity = 0.55; // beta
+Direction windDirection = N;
+
+double slopeCoeficient = 0.5; // alfa
+double distanceBetweenCells = 8;
+
+double calorie[3] = {0.24, 0.16, 0.08};
+
+int idleTime = 200;
+int alpha = 6;
